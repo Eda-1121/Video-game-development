@@ -1,9 +1,10 @@
-# player.gd - 玩家类
+# player.gd - 玩家类(改进版)
 extends Node2D
 class_name Player
 
 signal cards_played(cards: Array[Card])
 signal card_selected(card: Card)
+signal selection_changed(count: int)  # 新增:选牌数量变化信号
 
 enum PlayerType { HUMAN, AI }
 
@@ -74,6 +75,8 @@ func _on_card_clicked(card: Card):
 		card.set_selected(true)
 		selected_cards.append(card)
 	
+	# 发出选牌变化信号
+	selection_changed.emit(selected_cards.size())
 	card_selected.emit(card)
 
 func play_selected_cards() -> bool:
@@ -135,3 +138,10 @@ func show_cards(face_up: bool = true):
 func set_card_selectable(selectable: bool):
 	for card in hand:
 		card.is_selectable = selectable
+
+func clear_selection():
+	"""清除所有选中的牌"""
+	for card in selected_cards:
+		card.set_selected(false)
+	selected_cards.clear()
+	selection_changed.emit(0)

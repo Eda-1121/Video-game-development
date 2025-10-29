@@ -1,8 +1,8 @@
-# ui_manager.gd - UI管理器（左上角布局版）
+# ui_manager.gd - Phase 2 UI管理器
 extends CanvasLayer
 
 # UI元素引用
-var info_panel: Panel  # 统一的信息面板
+var info_panel: Panel
 var level_label: Label
 var trump_label: Label
 
@@ -13,20 +13,28 @@ var turn_label: Label
 
 var play_button: Button
 var pass_button: Button
+var bury_button: Button
 
 var center_message: Label
+var selected_count_label: Label
 
 # 玩家头像框
 var player_avatars: Array[Panel] = []
 var player_name_labels: Array[Label] = []
 
+# 新增：Phase 2 UI组件
+var bidding_ui: Node
+var game_over_ui: Node
+
 # 信号
 signal play_cards_pressed
 signal pass_pressed
+signal bury_cards_pressed
 
 func _ready():
 	layer = 1
 	create_ui()
+	create_phase2_ui()
 
 func create_ui():
 	# =====================================
@@ -34,11 +42,10 @@ func create_ui():
 	# =====================================
 	info_panel = Panel.new()
 	info_panel.position = Vector2(10, 10)
-	info_panel.size = Vector2(300, 220)  # 增大以容纳所有信息
+	info_panel.size = Vector2(300, 220)
 	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(info_panel)
 	
-	# 创建一个VBoxContainer来垂直排列所有信息
 	var info_container = VBoxContainer.new()
 	info_container.position = Vector2(15, 10)
 	info_container.add_theme_constant_override("separation", 5)
@@ -69,7 +76,7 @@ func create_ui():
 	var team1_title = Label.new()
 	team1_title.text = "队伍1"
 	team1_title.add_theme_font_size_override("font_size", 20)
-	team1_title.add_theme_color_override("font_color", Color(0.3, 0.8, 0.3))  # 绿色
+	team1_title.add_theme_color_override("font_color", Color(0.3, 0.8, 0.3))
 	team1_container.add_child(team1_title)
 	
 	team1_score_label = Label.new()
@@ -90,7 +97,7 @@ func create_ui():
 	var team2_title = Label.new()
 	team2_title.text = "队伍2"
 	team2_title.add_theme_font_size_override("font_size", 20)
-	team2_title.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))  # 红色
+	team2_title.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
 	team2_container.add_child(team2_title)
 	
 	team2_score_label = Label.new()
@@ -99,7 +106,7 @@ func create_ui():
 	team2_container.add_child(team2_score_label)
 	
 	# =====================================
-	# 回合提示标签（移到顶部中央）
+	# 回合提示标签
 	# =====================================
 	turn_label = Label.new()
 	turn_label.position = Vector2(400, 10)
@@ -111,10 +118,23 @@ func create_ui():
 	add_child(turn_label)
 	
 	# =====================================
+	# 已选牌数标签
+	# =====================================
+	selected_count_label = Label.new()
+	selected_count_label.position = Vector2(540, 60)
+	selected_count_label.size = Vector2(200, 40)
+	selected_count_label.text = "已选: 0/8"
+	selected_count_label.add_theme_font_size_override("font_size", 20)
+	selected_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	selected_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	selected_count_label.visible = false
+	add_child(selected_count_label)
+	
+	# =====================================
 	# 底部按钮区
 	# =====================================
 	var button_container = HBoxContainer.new()
-	button_container.position = Vector2(480, 650)
+	button_container.position = Vector2(440, 650)
 	button_container.add_theme_constant_override("separation", 20)
 	add_child(button_container)
 	
@@ -134,6 +154,15 @@ func create_ui():
 	pass_button.pressed.connect(_on_pass_button_pressed)
 	button_container.add_child(pass_button)
 	
+	# 埋底按钮
+	bury_button = Button.new()
+	bury_button.text = "确认埋底"
+	bury_button.custom_minimum_size = Vector2(140, 50)
+	bury_button.add_theme_font_size_override("font_size", 24)
+	bury_button.pressed.connect(_on_bury_button_pressed)
+	bury_button.visible = false
+	button_container.add_child(bury_button)
+	
 	# =====================================
 	# 中央消息标签
 	# =====================================
@@ -149,25 +178,44 @@ func create_ui():
 	add_child(center_message)
 	
 	# =====================================
-	# 玩家头像框（简化版，只在屏幕边缘显示）
+	# 玩家头像框
 	# =====================================
 	create_player_avatars()
 	
-	print("UI创建完成（左上角布局）")
+	print("UI创建完成(Phase 2)")
+
+func create_phase2_ui():
+	"""创建Phase 2的UI组件"""
+	# 叫牌UI
+	var BiddingUIScript = load("res://scripts/bidding_ui.gd")
+	if BiddingUIScript:
+		bidding_ui = Node.new()
+		bidding_ui.name = "BiddingUI"
+		bidding_ui.set_script(BiddingUIScript)
+		add_child(bidding_ui)
+		print("BiddingUI 已创建")
+	
+	# 游戏结束UI
+	var GameOverUIScript = load("res://scripts/game_over_ui.gd")
+	if GameOverUIScript:
+		game_over_ui = Node.new()
+		game_over_ui.name = "GameOverUI"
+		game_over_ui.set_script(GameOverUIScript)
+		add_child(game_over_ui)
+		print("GameOverUI 已创建")
 
 func create_player_avatars():
 	"""创建4个玩家的头像框"""
 	var avatar_positions = [
-		Vector2(540, 620),  # 玩家1（下方）
-		Vector2(10, 240),   # 玩家2（左侧，在信息面板下方）
-		Vector2(540, 60),   # 玩家3（上方）
-		Vector2(1150, 320)  # 玩家4（右侧）
+		Vector2(540, 620),
+		Vector2(10, 240),
+		Vector2(540, 60),
+		Vector2(1150, 320)
 	]
 	
 	var player_names = ["玩家1", "玩家2", "玩家3", "玩家4"]
 	
 	for i in range(4):
-		# 创建头像面板
 		var avatar_panel = Panel.new()
 		avatar_panel.position = avatar_positions[i]
 		avatar_panel.size = Vector2(120, 80)
@@ -175,7 +223,6 @@ func create_player_avatars():
 		add_child(avatar_panel)
 		player_avatars.append(avatar_panel)
 		
-		# 玩家名称
 		var name_label = Label.new()
 		name_label.position = Vector2(10, 10)
 		name_label.size = Vector2(100, 30)
@@ -186,7 +233,6 @@ func create_player_avatars():
 		avatar_panel.add_child(name_label)
 		player_name_labels.append(name_label)
 		
-		# 状态标签
 		var status_label = Label.new()
 		status_label.position = Vector2(10, 45)
 		status_label.size = Vector2(100, 25)
@@ -208,12 +254,21 @@ func _on_pass_button_pressed():
 	print("点击了过牌按钮")
 	pass_pressed.emit()
 
+func _on_bury_button_pressed():
+	print("点击了埋底按钮")
+	bury_cards_pressed.emit()
+
 # =====================================
 # 更新UI的方法
 # =====================================
 
 func update_level(level: int):
-	level_label.text = "当前级别: %d" % level
+	var level_names = {
+		2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8",
+		9: "9", 10: "10", 11: "J", 12: "Q", 13: "K", 14: "A"
+	}
+	var level_str = level_names.get(level, str(level))
+	level_label.text = "当前级别: %s" % level_str
 
 func update_trump_suit(suit_symbol: String):
 	trump_label.text = "主花色: %s" % suit_symbol
@@ -242,6 +297,36 @@ func highlight_current_player(player_id: int):
 	"""高亮当前出牌的玩家"""
 	for i in range(player_avatars.size()):
 		if i == player_id:
-			player_avatars[i].modulate = Color(1.2, 1.2, 1.0)  # 高亮
+			player_avatars[i].modulate = Color(1.2, 1.2, 1.0)
 		else:
 			player_avatars[i].modulate = Color.WHITE
+
+# =====================================
+# 埋底相关
+# =====================================
+
+func show_bury_button(visible: bool):
+	"""显示/隐藏埋底按钮"""
+	bury_button.visible = visible
+	selected_count_label.visible = visible
+	
+	play_button.visible = not visible
+	pass_button.visible = not visible
+
+func set_bury_button_enabled(enabled: bool):
+	"""启用/禁用埋底按钮"""
+	bury_button.disabled = not enabled
+
+func update_selected_count(count: int, max_count: int = 8):
+	"""更新已选牌数显示"""
+	selected_count_label.text = "已选: %d/%d" % [count, max_count]
+	
+	if count == max_count:
+		set_bury_button_enabled(true)
+		selected_count_label.add_theme_color_override("font_color", Color(0.3, 0.8, 0.3))
+	else:
+		set_bury_button_enabled(false)
+		if count > max_count:
+			selected_count_label.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
+		else:
+			selected_count_label.add_theme_color_override("font_color", Color.WHITE)
