@@ -19,7 +19,7 @@ var is_dealer: bool = false
 
 # UI相关
 var hand_container: Node2D
-var card_spacing: float = 50.0
+var card_spacing: float = 35.0
 var selected_cards: Array[Card] = []
 
 func _ready():
@@ -36,6 +36,10 @@ func receive_cards(cards: Array[Card]):
 		hand_container.add_child(card)
 		
 		card.visible = true
+		
+		# プレイヤー1（人間）の場合のみ表向きにする
+		if player_type == PlayerType.HUMAN:
+			card.set_face_up(true, true)  # ← この行を追加
 		
 		if not card.card_clicked.is_connected(_on_card_clicked):
 			card.card_clicked.connect(_on_card_clicked)
@@ -62,7 +66,7 @@ func update_hand_display(animate: bool = true):
 		else:
 			card.position = target_pos
 		
-		card.z_index = i
+		card.z_index = i 
 
 func _on_card_clicked(card: Card):
 	if player_type != PlayerType.HUMAN:
@@ -71,11 +75,15 @@ func _on_card_clicked(card: Card):
 	if card.is_selected:
 		card.set_selected(false)
 		selected_cards.erase(card)
+		# 元のz_indexに戻す
+		card.z_index = hand.find(card)
 	else:
 		card.set_selected(true)
 		selected_cards.append(card)
+		# 選択されたカードを最前面に
+		card.z_index = 1000 + selected_cards.size()
 	
-	# 发出选牌变化信号
+	# 発出選牌変化信号
 	selection_changed.emit(selected_cards.size())
 	card_selected.emit(card)
 

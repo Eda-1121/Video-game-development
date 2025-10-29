@@ -189,7 +189,7 @@ func create_phase2_ui():
 	# 叫牌UI
 	var BiddingUIScript = load("res://scripts/bidding_ui.gd")
 	if BiddingUIScript:
-		bidding_ui = Node.new()
+		bidding_ui = Control.new()  # ← ここを Node.new() から Control.new() に変更
 		bidding_ui.name = "BiddingUI"
 		bidding_ui.set_script(BiddingUIScript)
 		add_child(bidding_ui)
@@ -198,7 +198,7 @@ func create_phase2_ui():
 	# 游戏结束UI
 	var GameOverUIScript = load("res://scripts/game_over_ui.gd")
 	if GameOverUIScript:
-		game_over_ui = Node.new()
+		game_over_ui = Control.new()  # ← ここを Node.new() から Control.new() に変更
 		game_over_ui.name = "GameOverUI"
 		game_over_ui.set_script(GameOverUIScript)
 		add_child(game_over_ui)

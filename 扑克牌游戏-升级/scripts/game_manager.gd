@@ -100,6 +100,56 @@ func start_new_round():
 	
 	print("显示玩家1的手牌...")
 	players[0].show_cards(true)
+	players[0].visible = true  # ← プレイヤー1は表示
+	
+	# 他のプレイヤーのカードを非表示にする
+	for i in range(1, 4):
+		# players[i].show_cards(false)  ← この行を削除またはコメントアウト
+		players[i].visible = false  # ← プレイヤー2-4を非表示に
+	
+	print("=== 进入叫牌阶段 ===")
+	
+	if ui_manager:
+		ui_manager.update_level(current_level)
+		ui_manager.update_trump_suit("?")
+		ui_manager.update_team_scores(0, 0)
+		ui_manager.update_turn_message("叫牌阶段 - 请选择主花色")
+		
+		# 显示叫牌UI
+		if ui_manager.has_node("BiddingUI"):
+			var bidding_ui = ui_manager.get_node("BiddingUI")
+			bidding_ui.show_bidding_ui(true)
+			bidding_ui.update_current_bid("当前无人叫牌")
+	
+	phase_changed.emit(current_phase)
+	start_bidding_phase()
+	print("=== 开始新一局 ===")
+	total_rounds_played += 1
+	
+	team_scores = [0, 0]
+	current_bid = {
+		"team": -1,
+		"suit": Card.Suit.SPADE,
+		"count": 0,
+		"player_id": -1
+	}
+	bidding_round = 0
+	current_phase = GamePhase.BIDDING
+	
+	deck.shuffle()
+	bottom_cards = deck.deal_to_players(players)
+	print("底牌: %d 张" % bottom_cards.size())
+	
+	print("发牌完成")
+	for i in range(players.size()):
+		print("   %s: %d 张牌" % [players[i].player_name, players[i].get_hand_size()])
+	
+	players[dealer_index].is_dealer = true
+	
+	await get_tree().process_frame
+	
+	print("显示玩家1的手牌...")
+	players[0].show_cards(true)
 	
 	for i in range(1, 4):
 		players[i].show_cards(false)
