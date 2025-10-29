@@ -1,11 +1,11 @@
 # game_manager.gd - Phase 2 完整版游戏管理器
 extends Node
 
-enum GamePhase { BIDDING, BURYING, PLAYING, SCORING }
+enum GamePhase { DEALING_AND_BIDDING, BURYING, PLAYING, SCORING }
 
 var deck: Deck
 var players: Array[Player] = []
-var current_phase: GamePhase = GamePhase.BIDDING
+var current_phase: GamePhase = GamePhase.DEALING_AND_BIDDING
 
 var trump_suit: Card.Suit = Card.Suit.SPADE
 var current_level: int = 2
@@ -84,37 +84,156 @@ func start_new_round():
 		"player_id": -1
 	}
 	bidding_round = 0
-	current_phase = GamePhase.BIDDING
-	
+	current_phase = GamePhase.DEALING_AND_BIDDING
+
 	deck.shuffle()
-	bottom_cards = deck.deal_to_players(players)
+
+	# 留出底牌
+	for _i in 8:
+		if deck.cards.size() > 0:
+			bottom_cards.append(deck.cards.pop_back())
 
 	players[dealer_index].is_dealer = true
 
-	await get_tree().process_frame
-	# 玩家1（人类）显示正面
-	players[0].show_cards(true)
-	players[0].visible = true
-
-	# AI玩家显示背面（可以看到他们有牌，但看不到具体内容）
-	for i in range(1, 4):
-		players[i].show_cards(false)
-		players[i].visible = true
-
+	# 初始化UI
 	if ui_manager:
 		ui_manager.update_level(current_level)
 		ui_manager.update_trump_suit("?")
 		ui_manager.update_team_scores(0, 0)
-		ui_manager.update_turn_message("叫牌阶段 - 请选择主花色")
-		
-		# 显示叫牌UI
+		ui_manager.update_turn_message("正在发牌...")
+
+		# 显示叫牌UI（但按钮禁用）
 		if ui_manager.has_node("BiddingUI"):
 			var bidding_ui = ui_manager.get_node("BiddingUI")
-			bidding_ui.show_bidding_ui(true)
+			bidding_ui.show_bidding_ui(false)
 			bidding_ui.update_current_bid("当前无人叫牌")
 
 	phase_changed.emit(current_phase)
-	start_bidding_phase()
+
+	# 等待一帧后开始逐张发牌
+	await get_tree().process_frame
+	start_dealing_cards()
+
+# =====================================
+# 发牌系统
+# =====================================
+
+func start_dealing_cards():
+	"""开始逐张发牌"""
+	# 确保所有玩家可见
+	for i in range(4):
+		players[i].visible = true
+
+	var total_cards = deck.cards.size()
+	var card_index = 0
+	var current_player = dealer_index
+
+	# 逐张发牌
+	while deck.cards.size() > 0:
+		var card = deck.cards.pop_back()
+		var player = players[current_player]
+
+		# 将牌发给玩家
+		player.receive_cards([card])
+
+		# 设置卡牌显示
+		if player.player_type == Player.PlayerType.HUMAN:
+			card.set_face_up(true, false)  # 人类玩家的牌正面朝上
+		else:
+			card.set_face_up(false, true)  # AI玩家的牌背面朝上
+
+		card_index += 1
+
+		# 更新UI显示发牌进度
+		if ui_manager:
+			ui_manager.update_turn_message("正在发牌... (%d/%d)" % [card_index, total_cards])
+
+		# 检查该玩家是否可以叫牌
+		await check_and_handle_bidding(player, card)
+
+		# 下一个玩家
+		current_player = (current_player + 1) % 4
+
+		# 发牌延迟（让玩家看到发牌过程）
+		await get_tree().create_timer(0.1).timeout
+
+	# 发牌完成
+	finish_dealing()
+
+func check_and_handle_bidding(player: Player, latest_card: Card):
+	"""检查玩家是否可以叫牌，并处理叫牌"""
+	# 检查玩家手里是否有当前级别的牌
+	var level_cards = []
+	for card in player.hand:
+		if card.rank == current_level:
+			level_cards.append(card)
+
+	if level_cards.is_empty():
+		return
+
+	# 计算可以叫的最大张数
+	var suit_counts = {}
+	for card in level_cards:
+		if not suit_counts.has(card.suit):
+			suit_counts[card.suit] = 0
+		suit_counts[card.suit] += 1
+
+	# 找到最多的花色及张数
+	var max_count = 0
+	var max_suit = null
+	for suit in suit_counts:
+		if suit_counts[suit] > max_count:
+			max_count = suit_counts[suit]
+			max_suit = suit
+
+	# 如果是人类玩家且拿到了当前级别的牌
+	if player.player_type == Player.PlayerType.HUMAN and max_count > 0:
+		# 显示叫牌提示
+		if can_make_bid(player, max_suit, max_count):
+			if ui_manager and ui_manager.has_node("BiddingUI"):
+				var bidding_ui = ui_manager.get_node("BiddingUI")
+				bidding_ui.enable_buttons(true)
+			# 等待玩家叫牌或选择不叫（使用超时机制）
+			await get_tree().create_timer(1.0).timeout
+
+	# AI玩家自动叫牌逻辑
+	elif player.player_type == Player.PlayerType.AI:
+		# 如果有对子且可以叫牌
+		if max_count >= 2 and can_make_bid(player, max_suit, 2):
+			make_bid(player, max_suit, 2)
+		# 如果有单张且还没人叫
+		elif max_count >= 1 and current_bid["count"] == 0:
+			make_bid(player, max_suit, 1)
+
+func finish_dealing():
+	"""发牌完成，确定主牌"""
+	if ui_manager:
+		ui_manager.update_turn_message("发牌完成")
+
+		# 隐藏叫牌UI
+		if ui_manager.has_node("BiddingUI"):
+			var bidding_ui = ui_manager.get_node("BiddingUI")
+			bidding_ui.hide_bidding_ui()
+
+	# 如果没人叫牌，默认庄家队叫黑桃
+	if current_bid["count"] == 0:
+		trump_suit = Card.Suit.SPADE
+		current_bid["team"] = players[dealer_index].team
+	else:
+		trump_suit = current_bid["suit"]
+		dealer_index = current_bid["player_id"]  # 叫到主的人成为庄家
+
+	if ui_manager:
+		ui_manager.update_trump_suit(get_trump_symbol())
+		ui_manager.show_center_message("队伍%d 叫到主: %s" % [current_bid["team"] + 1, get_trump_symbol()], 2.0)
+
+	await get_tree().create_timer(2.0).timeout
+
+	# 进入埋底阶段
+	if players[dealer_index].player_type == Player.PlayerType.HUMAN:
+		start_burying_phase()
+	else:
+		ai_bury_bottom()
 
 # =====================================
 # 叫牌系统
@@ -149,23 +268,29 @@ func process_bidding_turn():
 
 func _on_player_bid_made(suit: Card.Suit, count: int):
 	"""玩家做出叫牌"""
-	var current_player = players[current_player_index]
-	
+	# 在发牌阶段，玩家1（人类）叫牌
+	var player = players[0]
+
 	# 验证叫牌是否有效
-	if not can_make_bid(current_player, suit, count):
+	if not can_make_bid(player, suit, count):
 		if ui_manager:
 			ui_manager.show_center_message("叫牌无效!", 1.5)
 		return
-	
+
 	# 执行叫牌
-	make_bid(current_player, suit, count)
-	
-	# 下一个玩家
-	next_bidding_turn()
+	make_bid(player, suit, count)
+
+	# 禁用叫牌按钮
+	if ui_manager and ui_manager.has_node("BiddingUI"):
+		var bidding_ui = ui_manager.get_node("BiddingUI")
+		bidding_ui.enable_buttons(false)
 
 func _on_player_bid_passed():
 	"""玩家选择不叫"""
-	next_bidding_turn()
+	# 禁用叫牌按钮
+	if ui_manager and ui_manager.has_node("BiddingUI"):
+		var bidding_ui = ui_manager.get_node("BiddingUI")
+		bidding_ui.enable_buttons(false)
 
 func can_make_bid(player: Player, suit: Card.Suit, count: int) -> bool:
 	"""检查是否可以叫牌"""
