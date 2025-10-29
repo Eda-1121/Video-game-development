@@ -17,25 +17,20 @@ func _ready():
 	background.z_index = -10
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
-	
-	print("游戏启动成功! (Phase 2)")
-	print("窗口大小: ", get_window().size)
-	
+
 	# 创建UI管理器
 	ui_manager = CanvasLayer.new()
 	ui_manager.name = "UIManager"
 	var ui_script = load("res://scripts/ui_manager.gd")
 	ui_manager.set_script(ui_script)
 	add_child(ui_manager)
-	print("UIManager 已创建")
-	
+
 	# 创建游戏管理器
 	game_manager = Node.new()
 	game_manager.name = "GameManager"
 	var game_script = load("res://scripts/game_manager.gd")
 	game_manager.set_script(game_script)
 	add_child(game_manager)
-	print("GameManager 已创建")
 	
 	# 连接基础UI信号
 	ui_manager.play_cards_pressed.connect(game_manager._on_play_cards_pressed)
@@ -52,26 +47,19 @@ func _ready():
 		var bidding_ui = ui_manager.get_node("BiddingUI")
 		bidding_ui.bid_made.connect(game_manager._on_player_bid_made)
 		bidding_ui.bid_passed.connect(game_manager._on_player_bid_passed)
-		print("已连接叫牌UI信号")
-	else:
-		print("警告: 找不到BiddingUI节点")
-	
+
 	# 连接游戏结束UI信号
 	if ui_manager.has_node("GameOverUI"):
 		var game_over_ui = ui_manager.get_node("GameOverUI")
 		game_over_ui.restart_game.connect(game_manager.restart_game)
 		game_over_ui.quit_game.connect(_on_quit_game)
-		print("已连接游戏结束UI信号")
-	else:
-		print("警告: 找不到GameOverUI节点")
-	
+
 	# 连接玩家1的选牌信号
 	await get_tree().process_frame
 	if game_manager.players.size() > 0:
 		var player1 = game_manager.players[0]
 		if player1.has_signal("selection_changed"):
 			player1.selection_changed.connect(_on_player_selection_changed)
-			print("已连接玩家1的选牌信号")
 
 func _on_player_selection_changed(count: int):
 	"""当玩家选牌数量变化时"""
@@ -80,11 +68,9 @@ func _on_player_selection_changed(count: int):
 
 func _on_quit_game():
 	"""退出游戏"""
-	print("退出游戏")
 	get_tree().quit()
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_ESCAPE:
-			print("按ESC退出游戏")
 			get_tree().quit()

@@ -23,12 +23,9 @@ func create_deck(_parent_node: Node = null):
 		var big_joker = Card.new(Card.Suit.JOKER, Card.Rank.BIG_JOKER)
 		cards.append(small_joker)
 		cards.append(big_joker)
-	
-	print("牌堆创建完成，共 %d 张牌" % cards.size())
 
 func shuffle():
 	cards.shuffle()
-	print("洗牌完成")
 
 func deal(num_cards: int) -> Array[Card]:
 	var dealt_cards: Array[Card] = []

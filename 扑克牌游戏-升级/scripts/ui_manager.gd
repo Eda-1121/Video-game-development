@@ -181,28 +181,24 @@ func create_ui():
 	# 玩家头像框
 	# =====================================
 	create_player_avatars()
-	
-	print("UI创建完成(Phase 2)")
 
 func create_phase2_ui():
 	"""创建Phase 2的UI组件"""
 	# 叫牌UI
 	var BiddingUIScript = load("res://scripts/bidding_ui.gd")
 	if BiddingUIScript:
-		bidding_ui = Control.new()  # ← ここを Node.new() から Control.new() に変更
+		bidding_ui = Control.new()
 		bidding_ui.name = "BiddingUI"
 		bidding_ui.set_script(BiddingUIScript)
 		add_child(bidding_ui)
-		print("BiddingUI 已创建")
-	
+
 	# 游戏结束UI
 	var GameOverUIScript = load("res://scripts/game_over_ui.gd")
 	if GameOverUIScript:
-		game_over_ui = Control.new()  # ← ここを Node.new() から Control.new() に変更
+		game_over_ui = Control.new()
 		game_over_ui.name = "GameOverUI"
 		game_over_ui.set_script(GameOverUIScript)
 		add_child(game_over_ui)
-		print("GameOverUI 已创建")
 
 func create_player_avatars():
 	"""创建4个玩家的头像框"""
@@ -247,15 +243,12 @@ func create_player_avatars():
 # =====================================
 
 func _on_play_button_pressed():
-	print("点击了出牌按钮")
 	play_cards_pressed.emit()
 
 func _on_pass_button_pressed():
-	print("点击了过牌按钮")
 	pass_pressed.emit()
 
 func _on_bury_button_pressed():
-	print("点击了埋底按钮")
 	bury_cards_pressed.emit()
 
 # =====================================

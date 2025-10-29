@@ -108,10 +108,8 @@ func hide_game_over():
 
 func _on_restart_pressed():
 	"""重新开始按钮"""
-	print("玩家选择重新开始")
 	restart_game.emit()
 
 func _on_quit_pressed():
 	"""退出按钮"""
-	print("玩家选择退出")
 	quit_game.emit()

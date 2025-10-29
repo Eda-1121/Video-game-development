@@ -233,20 +233,20 @@ func hover_effect():
 		return
 	
 	is_hovering = true
-	
-	# z_indexを一時的に上げる
+
+	# 临时提高z_index，确保悬停的卡牌在最上层
 	var original_z = z_index
 	z_index = 900
-	
+
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_trans(Tween.TRANS_BACK)
-	
+
 	tween.tween_property(self, "position:y", original_position.y - HOVER_HEIGHT, 0.2)
 	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.2)
-	
-	# tweenが終わったら元に戻す準備
+
+	# 动画完成后，如果不再悬停则恢复z_index
 	tween.finished.connect(func():
 		if not is_hovering:
 			z_index = original_z
@@ -257,8 +257,8 @@ func unhover_effect():
 		return
 	
 	is_hovering = false
-	
-	# 選択されていない場合のみz_indexを戻す
+
+	# 只有未选中的卡牌才恢复原始z_index
 	if not is_selected:
 		var hand_index = 0
 		if get_parent() and get_parent().name == "HandContainer":

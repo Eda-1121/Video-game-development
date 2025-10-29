@@ -101,13 +101,11 @@ func _on_suit_button_pressed(suit_index: int):
 		3: suit = Card.Suit.DIAMOND
 		4: suit = Card.Suit.JOKER  # 无主
 		_: suit = Card.Suit.SPADE
-	
-	print("玩家选择叫: %s" % suit_names[suit_index])
+
 	bid_made.emit(suit, 1)  # 暂时都是1张叫牌
 
 func _on_pass_button_pressed():
 	"""过牌按钮被点击"""
-	print("玩家选择不叫")
 	bid_passed.emit()
 
 func enable_buttons(enabled: bool):
