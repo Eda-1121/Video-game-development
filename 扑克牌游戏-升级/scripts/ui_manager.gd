@@ -133,8 +133,8 @@ func create_ui():
 	# =====================================
 	var button_container = HBoxContainer.new()
 	# 居中显示：屏幕宽度1280，按钮宽120，居中位置 (1280-120)/2 = 580
-	# 按钮位置更靠上，避免与卡牌重叠（y=400，距离手牌150px）
-	button_container.position = Vector2(580, 400)
+	# 按钮位置调整到y=470，与手牌保持适当距离
+	button_container.position = Vector2(580, 470)
 	button_container.add_theme_constant_override("separation", 20)
 	add_child(button_container)
 
@@ -154,7 +154,7 @@ func create_ui():
 	bury_button.pressed.connect(_on_bury_button_pressed)
 	bury_button.visible = false
 	# 埋底按钮独立定位，居中显示
-	bury_button.position = Vector2(570, 400)  # 与出牌按钮相同高度
+	bury_button.position = Vector2(570, 470)  # 与出牌按钮相同高度
 	add_child(bury_button)
 	
 	# =====================================

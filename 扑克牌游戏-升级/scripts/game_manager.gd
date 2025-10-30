@@ -54,7 +54,7 @@ func initialize_game():
 
 	# 玩家位置：玩家1在下方居中，其他AI玩家位置不变
 	var player_positions = [
-		Vector2(200, 550),   # 玩家1（人类）- 下方居中
+		Vector2(200, 580),   # 玩家1（人类）- 下方居中，向下调整
 		Vector2(50, 280),    # 玩家2（AI）- 左侧
 		Vector2(100, 50),    # 玩家3（AI）- 上方
 		Vector2(1050, 280)   # 玩家4（AI）- 右侧
