@@ -233,6 +233,8 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 
 func finish_dealing():
 	"""发牌完成，确定主牌"""
+	print("=== finish_dealing() 被调用 ===")
+
 	if ui_manager:
 		ui_manager.update_turn_message("发牌完成")
 
@@ -245,9 +247,11 @@ func finish_dealing():
 	if current_bid["count"] == 0:
 		trump_suit = Card.Suit.SPADE
 		current_bid["team"] = players[dealer_index].team
+		print("没人叫牌，默认庄家队叫黑桃")
 	else:
 		trump_suit = current_bid["suit"]
 		dealer_index = current_bid["player_id"]  # 叫到主的人成为庄家
+		print("叫牌成功！新庄家：", players[dealer_index].player_name, " (player_id=", dealer_index, ")")
 
 	if ui_manager:
 		ui_manager.update_trump_suit(get_trump_symbol())
@@ -257,8 +261,10 @@ func finish_dealing():
 
 	# 进入埋底阶段
 	if players[dealer_index].player_type == Player.PlayerType.HUMAN:
+		print("庄家是人类玩家，进入人类埋底阶段")
 		start_burying_phase()
 	else:
+		print("庄家是AI玩家，进入AI埋底阶段")
 		ai_bury_bottom()
 
 # =====================================
@@ -456,13 +462,18 @@ func get_suit_name(suit: Card.Suit) -> String:
 
 func start_burying_phase():
 	"""开始埋底阶段"""
+	print("=== start_burying_phase() 被调用 ===")
+	print("当前阶段变更为：BURYING")
 	current_phase = GamePhase.BURYING
 
 	var dealer = players[dealer_index]
-	
+	print("庄家：", dealer.player_name, " 收到底牌，手牌数：", dealer.hand.size())
+
 	dealer.receive_cards(bottom_cards)
 	bottom_cards.clear()
-	
+
+	print("底牌发放完成，庄家手牌数：", dealer.hand.size())
+
 	if ui_manager:
 		ui_manager.update_turn_message("庄家埋底 - 请选择8张牌作为底牌")
 		ui_manager.show_center_message("庄家请选择8张牌扣底", 2.0)
@@ -471,15 +482,22 @@ func start_burying_phase():
 
 func _on_bury_cards_pressed():
 	"""玩家点击埋底按钮"""
+	print("=== _on_bury_cards_pressed() 被调用 ===")
+	print("当前阶段：", current_phase)
+
 	if current_phase != GamePhase.BURYING:
+		print("警告：当前不是埋底阶段，忽略埋底操作")
 		return
-	
+
 	var dealer = players[dealer_index]
-	
+
 	if dealer.selected_cards.size() != 8:
+		print("选中的牌数量不对：", dealer.selected_cards.size(), " 需要8张")
 		if ui_manager:
 			ui_manager.show_center_message("请选择正好8张牌!", 1.5)
 		return
+
+	print("埋底操作：从 ", dealer.hand.size(), " 张手牌中移除 8 张")
 
 	for card in dealer.selected_cards:
 		bottom_cards.append(card)
@@ -487,15 +505,19 @@ func _on_bury_cards_pressed():
 		if card.get_parent() == dealer.hand_container:
 			dealer.hand_container.remove_child(card)
 		card.set_selected(false)
-	
+
 	dealer.selected_cards.clear()
 	dealer.update_hand_display()
-	
+
+	print("埋底完成，庄家剩余手牌：", dealer.hand.size())
+
 	if ui_manager:
 		ui_manager.show_bury_button(false)
 		ui_manager.show_center_message("埋底完成", 1.5)
 
+	print("等待1.5秒后进入出牌阶段...")
 	await get_tree().create_timer(1.5).timeout
+	print("调用 start_playing_phase()")
 	start_playing_phase()
 
 func auto_bury_for_player(dealer: Player):
@@ -521,12 +543,16 @@ func auto_bury_for_player(dealer: Player):
 
 func ai_bury_bottom():
 	"""AI埋底"""
+	print("=== ai_bury_bottom() 被调用 ===")
 	var dealer = players[dealer_index]
-	
+	print("AI庄家：", dealer.player_name, " 开始埋底")
+
 	dealer.receive_cards(bottom_cards)
 	bottom_cards.clear()
-	
+
+	print("等待1.5秒...")
 	await get_tree().create_timer(1.5).timeout
+	print("调用 auto_bury_for_player()")
 	auto_bury_for_player(dealer)
 
 # =====================================
@@ -535,6 +561,8 @@ func ai_bury_bottom():
 
 func start_playing_phase():
 	"""开始出牌阶段"""
+	print("=== start_playing_phase() 被调用 ===")
+	print("当前阶段变更为：PLAYING")
 	current_phase = GamePhase.PLAYING
 
 	# 重新整理所有玩家的手牌（主牌放最后）
@@ -548,7 +576,6 @@ func start_playing_phase():
 		player.update_hand_display(true)
 
 	current_player_index = dealer_index
-	print("=== 开始出牌阶段 ===")
 	print("庄家（叫牌成功的玩家）：", players[dealer_index].player_name, " (player_id=", dealer_index, ")")
 	print("首先出牌的玩家：", players[current_player_index].player_name)
 
@@ -559,8 +586,11 @@ func start_playing_phase():
 	phase_changed.emit(current_phase)
 
 	if players[current_player_index].player_type == Player.PlayerType.AI:
+		print("首位出牌的是AI，等待1秒后让AI出牌")
 		await get_tree().create_timer(1.0).timeout
 		ai_play_turn(players[current_player_index])
+	else:
+		print("首位出牌的是人类玩家，等待玩家操作")
 
 func get_trump_symbol() -> String:
 	match trump_suit:
@@ -708,6 +738,15 @@ func next_player_turn():
 
 func ai_play_turn(ai_player: Player):
 	"""AI出牌"""
+	print("=== ai_play_turn() 被调用 ===")
+	print("AI玩家：", ai_player.player_name, " (player_id=", ai_player.player_id, ")")
+	print("当前阶段：", current_phase)
+
+	# 安全检查：确保在出牌阶段才能出牌
+	if current_phase != GamePhase.PLAYING:
+		print("警告：当前不是出牌阶段，AI不能出牌！")
+		return
+
 	for card in ai_player.hand:
 		card.set_trump(trump_suit, current_level)
 	
