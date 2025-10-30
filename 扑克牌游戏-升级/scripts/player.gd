@@ -30,20 +30,21 @@ func _ready():
 func receive_cards(cards: Array[Card]):
 	for card in cards:
 		hand.append(card)
-		
+
 		if card.get_parent():
 			card.get_parent().remove_child(card)
 		hand_container.add_child(card)
-		
-		card.visible = true
+
+		# 不在这里设置visible，由调用者控制
+		# card.visible = true
 
 		# 人类玩家的牌表面朝上显示
 		if player_type == PlayerType.HUMAN:
 			card.set_face_up(true, true)
-		
-		if not card.card_clicked.is_connected(_on_card_clicked):
-			card.card_clicked.connect(_on_card_clicked)
-	
+			# 只有人类玩家的牌才可以点击
+			if not card.card_clicked.is_connected(_on_card_clicked):
+				card.card_clicked.connect(_on_card_clicked)
+
 	sort_hand()
 	update_hand_display()
 

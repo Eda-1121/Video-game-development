@@ -120,9 +120,12 @@ func start_new_round():
 
 func start_dealing_cards():
 	"""开始逐张发牌"""
-	# 确保所有玩家可见
-	for i in range(4):
-		players[i].visible = true
+	# 只显示人类玩家（玩家1）
+	players[0].visible = true
+
+	# 隐藏其他AI玩家的手牌
+	for i in range(1, 4):
+		players[i].visible = false
 
 	var total_cards = deck.cards.size()
 	var card_index = 0
@@ -136,11 +139,13 @@ func start_dealing_cards():
 		# 将牌发给玩家
 		player.receive_cards([card])
 
-		# 设置卡牌显示
+		# 只有人类玩家的牌需要显示
 		if player.player_type == Player.PlayerType.HUMAN:
 			card.set_face_up(true, false)  # 人类玩家的牌正面朝上
+			card.visible = true
 		else:
-			card.set_face_up(false, true)  # AI玩家的牌背面朝上
+			# AI玩家的牌完全不显示（不需要看到背面）
+			card.visible = false
 
 		card_index += 1
 
@@ -639,11 +644,14 @@ func show_played_cards(player_id: int, cards: Array):
 		var card = cards[i]
 		if not card.get_parent():
 			add_child(card)
-		
+
 		card.position = position + Vector2(i * 20, 0)
 		card.z_index = 100
 		card.visible = true
 		card.set_face_up(true, true)
+
+		# 禁用已出牌的交互事件
+		card.is_selectable = false
 
 func next_player_turn():
 	"""下一个玩家"""
