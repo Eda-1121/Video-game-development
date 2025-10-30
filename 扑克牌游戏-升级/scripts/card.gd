@@ -34,10 +34,10 @@ var area_2d: Area2D
 # 动画参数
 const FLIP_DURATION = 0.3
 const FLIP_HALF_TIME = 0.15
-const CARD_SCALE = 1.5  # 卡牌整体缩放比例
-const HOVER_HEIGHT = 37.5  # 悬停高度（与CARD_SCALE成比例）
+const CARD_SCALE = 1.0  # 卡牌整体缩放比例（恢复原始大小）
+const HOVER_HEIGHT = 25  # 悬停高度
 const HOVER_SCALE = 1.15  # 悬停时额外的缩放比例
-const SELECTED_HEIGHT = 45  # 选中时的向上偏移高度（与CARD_SCALE成比例）
+const SELECTED_HEIGHT = 30  # 选中时的向上偏移高度
 
 # 交互状态
 var is_selectable: bool = true

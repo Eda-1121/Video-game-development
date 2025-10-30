@@ -19,7 +19,7 @@ var is_dealer: bool = false
 
 # UI相关
 var hand_container: Node2D
-var card_spacing: float = 52.5  # 35.0 * 1.5 (配合CARD_SCALE)
+var card_spacing: float = 35.0  # 卡牌间距（恢复原始值）
 var selected_cards: Array[Card] = []
 
 func _ready():
