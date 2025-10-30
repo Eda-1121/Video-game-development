@@ -255,9 +255,8 @@ func hover_effect():
 	var target_y = original_position.y - base_offset - HOVER_HEIGHT
 
 	tween.tween_property(self, "position:y", target_y, 0.2)
-	# 在卡牌基础缩放上再应用hover缩放
-	var hover_scale = CARD_SCALE * HOVER_SCALE
-	tween.tween_property(sprite, "scale", Vector2(hover_scale, hover_scale), 0.2)
+	# 对整个Card节点进行缩放，而不是sprite
+	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.2)
 
 	# 动画完成后，如果不再悬停则恢复z_index
 	tween.finished.connect(func():
@@ -290,8 +289,8 @@ func unhover_effect():
 	var target_y = original_position.y - base_offset
 
 	tween.tween_property(self, "position:y", target_y, 0.2)
-	# 恢复到卡牌基础缩放
-	tween.tween_property(sprite, "scale", Vector2(CARD_SCALE, CARD_SCALE), 0.2)
+	# 恢复Card节点的缩放为1.0（sprite自身保持CARD_SCALE）
+	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.2)
 # ============================================
 # 选中状态
 # ============================================
