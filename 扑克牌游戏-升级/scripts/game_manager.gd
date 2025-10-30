@@ -180,7 +180,7 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 	if level_cards.is_empty():
 		return
 
-	# 计算可以叫的最大张数
+	# 计算各个花色的等级牌数量
 	var suit_counts = {}
 	for card in level_cards:
 		if not suit_counts.has(card.suit):
@@ -197,16 +197,19 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 
 	# 如果是人类玩家且拿到了当前级别的牌
 	if player.player_type == Player.PlayerType.HUMAN and max_count > 0:
-		# 检查是否可以叫牌
-		var can_bid_single = can_make_bid(player, max_suit, 1)
-		var can_bid_pair = max_count >= 2 and can_make_bid(player, max_suit, 2)
+		# 收集所有可以叫的花色
+		var available_suits = []
+		for suit in suit_counts:
+			# 检查该花色是否可以叫牌（单张或对子）
+			var count = suit_counts[suit]
+			if can_make_bid(player, suit, 1):
+				available_suits.append(suit)
 
-		if can_bid_single or can_bid_pair:
-			# 显示叫牌UI并启用按钮
+		if not available_suits.is_empty():
+			# 显示叫牌UI，只显示可以叫的花色
 			if ui_manager and ui_manager.has_node("BiddingUI"):
 				var bidding_ui = ui_manager.get_node("BiddingUI")
-				bidding_ui.enable_buttons(true)
-				bidding_ui.show_bidding_ui(true)
+				bidding_ui.show_bidding_options(available_suits)
 
 			# 设置等待标记
 			waiting_for_bid_decision = true

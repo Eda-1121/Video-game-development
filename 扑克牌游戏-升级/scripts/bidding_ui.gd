@@ -6,11 +6,15 @@ signal bid_made(suit: Card.Suit, count: int)
 signal bid_passed
 
 var bid_panel: Panel
-var bid_buttons: Array[Button] = []
-var pass_button: Button
+var button_container: HBoxContainer
 var current_bid_label: Label
 
-var suit_names = ["黑桃 ♠", "红心 ♥", "梅花 ♣", "方片 ♦", "无主 👑"]
+var suit_names = {
+	Card.Suit.SPADE: "黑桃 ♠",
+	Card.Suit.HEART: "红心 ♥",
+	Card.Suit.CLUB: "梅花 ♣",
+	Card.Suit.DIAMOND: "方片 ♦"
+}
 
 func _ready():
 	create_bidding_panel()
@@ -21,18 +25,18 @@ func create_bidding_panel():
 	# 主面板
 	bid_panel = Panel.new()
 	bid_panel.position = Vector2(400, 250)
-	bid_panel.size = Vector2(480, 220)
+	bid_panel.size = Vector2(480, 180)
 	add_child(bid_panel)
-	
+
 	# 标题
 	var title_label = Label.new()
 	title_label.position = Vector2(20, 10)
 	title_label.size = Vector2(440, 30)
-	title_label.text = "叫牌阶段 - 选择主花色"
+	title_label.text = "叫牌阶段"
 	title_label.add_theme_font_size_override("font_size", 24)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bid_panel.add_child(title_label)
-	
+
 	# 当前叫牌信息
 	current_bid_label = Label.new()
 	current_bid_label.position = Vector2(20, 50)
@@ -41,75 +45,76 @@ func create_bidding_panel():
 	current_bid_label.add_theme_font_size_override("font_size", 18)
 	current_bid_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bid_panel.add_child(current_bid_label)
-	
-	# 花色按钮容器
-	var button_container = GridContainer.new()
-	button_container.position = Vector2(40, 90)
-	button_container.size = Vector2(400, 80)
-	button_container.columns = 3
-	button_container.add_theme_constant_override("h_separation", 10)
-	button_container.add_theme_constant_override("v_separation", 10)
-	bid_panel.add_child(button_container)
-	
-	# 创建5个花色按钮（4个花色 + 无主）
-	for i in range(5):
-		var btn = Button.new()
-		btn.text = suit_names[i]
-		btn.custom_minimum_size = Vector2(120, 35)
-		btn.add_theme_font_size_override("font_size", 18)
-		
-		# 连接信号，使用闭包捕获索引
-		var suit_index = i
-		btn.pressed.connect(func(): _on_suit_button_pressed(suit_index))
-		
-		button_container.add_child(btn)
-		bid_buttons.append(btn)
-	
-	# 过牌按钮
-	pass_button = Button.new()
-	pass_button.position = Vector2(170, 180)
-	pass_button.size = Vector2(140, 35)
-	pass_button.text = "不叫"
-	pass_button.add_theme_font_size_override("font_size", 20)
-	pass_button.pressed.connect(_on_pass_button_pressed)
-	bid_panel.add_child(pass_button)
 
-func show_bidding_ui(can_bid: bool = true):
-	"""显示叫牌界面"""
+	# 按钮容器（会根据可叫花色动态创建按钮）
+	button_container = HBoxContainer.new()
+	button_container.position = Vector2(40, 100)
+	button_container.size = Vector2(400, 50)
+	button_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	button_container.add_theme_constant_override("separation", 15)
+	bid_panel.add_child(button_container)
+
+func show_bidding_options(available_suits: Array):
+	"""
+	显示可以叫的花色选项
+	available_suits: Array[Card.Suit] - 可以叫的花色列表
+	"""
+	# 清空现有按钮
+	for child in button_container.get_children():
+		child.queue_free()
+
 	visible = true
-	
-	# 根据是否可以叫牌来设置按钮状态
-	for btn in bid_buttons:
-		btn.disabled = not can_bid
-	pass_button.disabled = false
+
+	# 为每个可叫的花色创建按钮
+	for suit in available_suits:
+		var btn = Button.new()
+		btn.text = suit_names[suit]
+		btn.custom_minimum_size = Vector2(100, 40)
+		btn.add_theme_font_size_override("font_size", 18)
+
+		# 连接信号
+		var suit_to_bid = suit
+		btn.pressed.connect(func(): _on_suit_button_pressed(suit_to_bid))
+
+		button_container.add_child(btn)
+
+	# 添加"不叫"按钮
+	var pass_button = Button.new()
+	pass_button.text = "不叫"
+	pass_button.custom_minimum_size = Vector2(100, 40)
+	pass_button.add_theme_font_size_override("font_size", 18)
+	pass_button.pressed.connect(_on_pass_button_pressed)
+	button_container.add_child(pass_button)
 
 func hide_bidding_ui():
 	"""隐藏叫牌界面"""
 	visible = false
 
+	# 清空按钮
+	for child in button_container.get_children():
+		child.queue_free()
+
 func update_current_bid(message: String):
 	"""更新当前叫牌信息"""
 	current_bid_label.text = message
 
-func _on_suit_button_pressed(suit_index: int):
+func _on_suit_button_pressed(suit: Card.Suit):
 	"""花色按钮被点击"""
-	var suit: Card.Suit
-	match suit_index:
-		0: suit = Card.Suit.SPADE
-		1: suit = Card.Suit.HEART
-		2: suit = Card.Suit.CLUB
-		3: suit = Card.Suit.DIAMOND
-		4: suit = Card.Suit.JOKER  # 无主
-		_: suit = Card.Suit.SPADE
-
 	bid_made.emit(suit, 1)  # 暂时都是1张叫牌
+	hide_bidding_ui()
 
 func _on_pass_button_pressed():
-	"""过牌按钮被点击"""
+	"""不叫按钮被点击"""
 	bid_passed.emit()
+	hide_bidding_ui()
+
+# 保留这些方法以兼容旧代码
+func show_bidding_ui(can_bid: bool = true):
+	"""显示叫牌界面（兼容方法）"""
+	visible = can_bid
 
 func enable_buttons(enabled: bool):
-	"""启用/禁用所有按钮"""
-	for btn in bid_buttons:
-		btn.disabled = not enabled
-	pass_button.disabled = not enabled
+	"""启用/禁用所有按钮（兼容方法）"""
+	for btn in button_container.get_children():
+		if btn is Button:
+			btn.disabled = not enabled
