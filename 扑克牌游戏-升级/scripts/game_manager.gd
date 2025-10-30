@@ -7,6 +7,9 @@ var deck: Deck
 var players: Array[Player] = []
 var current_phase: GamePhase = GamePhase.DEALING_AND_BIDDING
 
+# 牌副数选择（2副或4副）
+var num_decks: int = 2
+
 var trump_suit: Card.Suit = Card.Suit.SPADE
 var current_level: int = 2
 var dealer_index: int = 0
@@ -53,7 +56,8 @@ func _ready():
 	initialize_game()
 
 func initialize_game():
-	deck = Deck.new(2)
+	print("=== 初始化游戏：使用 ", num_decks, " 副牌 ===")
+	deck = Deck.new(num_decks)
 	deck.create_deck()
 
 	# 玩家位置：玩家1在下方居中，其他AI玩家位置不变
@@ -79,7 +83,8 @@ func initialize_game():
 func start_new_round():
 	print("=== 开始新一局 ===")
 	total_rounds_played += 1
-	
+
+	# 重置游戏状态
 	team_scores = [0, 0]
 	current_bid = {
 		"team": -1,
@@ -90,12 +95,17 @@ func start_new_round():
 	bidding_round = 0
 	current_phase = GamePhase.DEALING_AND_BIDDING
 
+	# 步骤1: 洗牌
+	print("步骤1: 洗牌")
 	deck.shuffle()
 
-	# 留出底牌
+	# 步骤2: 准备底牌（8张）
+	print("步骤2: 准备底牌（8张）")
+	bottom_cards.clear()
 	for _i in 8:
 		if deck.cards.size() > 0:
 			bottom_cards.append(deck.cards.pop_back())
+	print("底牌准备完成，剩余牌数：", deck.cards.size())
 
 	players[dealer_index].is_dealer = true
 
@@ -114,7 +124,8 @@ func start_new_round():
 
 	phase_changed.emit(current_phase)
 
-	# 等待一帧后开始逐张发牌
+	# 步骤3: 开始逐张发牌（发牌过程中可以随时叫牌）
+	print("步骤3: 开始发牌，发牌过程中可以随时叫牌")
 	await get_tree().process_frame
 	start_dealing_cards()
 
@@ -197,19 +208,21 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 
 	# 如果是人类玩家且拿到了当前级别的牌
 	if player.player_type == Player.PlayerType.HUMAN and max_count > 0:
-		# 收集所有可以叫的花色
+		# 收集所有可以叫的花色和对应的张数
 		var available_suits = []
+		var valid_suit_counts = {}
 		for suit in suit_counts:
-			# 检查该花色是否可以叫牌（单张或对子）
 			var count = suit_counts[suit]
-			if can_make_bid(player, suit, 1):
+			# 检查该花色是否可以叫牌
+			if can_make_bid(player, suit, count):
 				available_suits.append(suit)
+				valid_suit_counts[suit] = count
 
 		if not available_suits.is_empty():
-			# 显示叫牌UI，只显示可以叫的花色
+			# 显示叫牌UI，显示可以叫的花色和张数
 			if ui_manager and ui_manager.has_node("BiddingUI"):
 				var bidding_ui = ui_manager.get_node("BiddingUI")
-				bidding_ui.show_bidding_options(available_suits)
+				bidding_ui.show_bidding_options(available_suits, valid_suit_counts)
 
 			# 设置等待标记
 			waiting_for_bid_decision = true
@@ -224,24 +237,31 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 
 	# AI玩家自动叫牌逻辑
 	elif player.player_type == Player.PlayerType.AI:
-		# 如果有对子且可以叫牌
-		if max_count >= 2 and can_make_bid(player, max_suit, 2):
-			make_bid(player, max_suit, 2)
-		# 如果有单张且还没人叫
-		elif max_count >= 1 and current_bid["count"] == 0:
-			make_bid(player, max_suit, 1)
+		# AI会根据手中等级牌的数量决定是否叫牌
+		if max_count > 0 and can_make_bid(player, max_suit, max_count):
+			# 如果AI有足够多的等级牌，就叫牌
+			# AI策略：至少2张才叫（除非还没人叫牌）
+			if max_count >= 2 or current_bid["count"] == 0:
+				make_bid(player, max_suit, max_count)
+				print("AI ", player.player_name, " 叫牌：", max_count, " 张")
 
 func finish_dealing():
-	"""发牌完成，确定主牌"""
+	"""发牌完成，进行最后一次叫牌机会，然后确定主牌"""
 	print("=== finish_dealing() 被调用 ===")
+	print("步骤4: 发牌结束，检查是否有最后叫牌机会")
 
 	if ui_manager:
-		ui_manager.update_turn_message("发牌完成")
+		ui_manager.update_turn_message("发牌完成，最后叫牌机会...")
 
-		# 隐藏叫牌UI
-		if ui_manager.has_node("BiddingUI"):
-			var bidding_ui = ui_manager.get_node("BiddingUI")
-			bidding_ui.hide_bidding_ui()
+	# 步骤4: 发牌结束后的最后叫牌机会
+	# 检查所有玩家是否有更多等级牌可以反叫
+	await check_final_bidding_opportunity()
+
+	# 步骤5: 确定主牌和庄家
+	print("步骤5: 确定主牌和庄家")
+	if ui_manager and ui_manager.has_node("BiddingUI"):
+		var bidding_ui = ui_manager.get_node("BiddingUI")
+		bidding_ui.hide_bidding_ui()
 
 	# 如果没人叫牌，默认庄家队叫黑桃
 	if current_bid["count"] == 0:
@@ -259,7 +279,8 @@ func finish_dealing():
 
 	await get_tree().create_timer(2.0).timeout
 
-	# 进入埋底阶段
+	# 步骤6: 进入埋底阶段
+	print("步骤6: 进入埋底阶段")
 	if players[dealer_index].player_type == Player.PlayerType.HUMAN:
 		print("庄家是人类玩家，进入人类埋底阶段")
 		start_burying_phase()
@@ -270,6 +291,72 @@ func finish_dealing():
 # =====================================
 # 叫牌系统
 # =====================================
+
+func check_final_bidding_opportunity():
+	"""发牌结束后的最后叫牌机会"""
+	print("检查所有玩家是否有最后叫牌机会...")
+
+	# 检查每个玩家手中的等级牌数量
+	for player in players:
+		var level_cards = []
+		for card in player.hand:
+			if card.rank == current_level:
+				level_cards.append(card)
+
+		if level_cards.is_empty():
+			continue
+
+		# 计算各个花色的等级牌数量
+		var suit_counts = {}
+		for card in level_cards:
+			if not suit_counts.has(card.suit):
+				suit_counts[card.suit] = 0
+			suit_counts[card.suit] += 1
+
+		# 找到最多的花色及张数
+		var max_count = 0
+		var max_suit = null
+		for suit in suit_counts:
+			if suit_counts[suit] > max_count:
+				max_count = suit_counts[suit]
+				max_suit = suit
+
+		# 检查是否可以反叫（需要比当前叫牌更多的牌）
+		if max_count > current_bid["count"]:
+			print(player.player_name, " 有 ", max_count, " 张等级牌，可以反叫")
+
+			if player.player_type == Player.PlayerType.HUMAN:
+				# 人类玩家，显示叫牌UI
+				var available_suits = []
+				var valid_suit_counts = {}
+				for suit in suit_counts:
+					var count = suit_counts[suit]
+					if count > current_bid["count"]:
+						available_suits.append(suit)
+						valid_suit_counts[suit] = count
+
+				if not available_suits.is_empty():
+					if ui_manager and ui_manager.has_node("BiddingUI"):
+						var bidding_ui = ui_manager.get_node("BiddingUI")
+						bidding_ui.show_bidding_options(available_suits, valid_suit_counts)
+						ui_manager.show_center_message("最后叫牌机会！", 2.0)
+
+					# 等待玩家决策
+					waiting_for_bid_decision = true
+					bid_decision_made = false
+					while waiting_for_bid_decision and not bid_decision_made:
+						await get_tree().create_timer(0.1).timeout
+					waiting_for_bid_decision = false
+			else:
+				# AI玩家，自动判断是否反叫
+				if max_count > current_bid["count"] + 1:  # AI只在有明显优势时反叫
+					print("AI ", player.player_name, " 决定反叫")
+					make_bid(player, max_suit, max_count)
+					await get_tree().create_timer(2.0).timeout
+				else:
+					print("AI ", player.player_name, " 放弃反叫")
+
+	print("最后叫牌机会结束")
 
 func start_bidding_phase():
 	"""开始叫牌阶段"""
@@ -331,26 +418,33 @@ func _on_player_bid_passed():
 	bid_decision_made = true
 
 func can_make_bid(player: Player, suit: Card.Suit, count: int) -> bool:
-	"""检查是否可以叫牌"""
-	# 如果还没有人叫牌，任何人都可以叫
+	"""
+	检查是否可以叫牌
+	规则：
+	- 第一次叫牌只需要1张等级牌
+	- 后续叫牌需要比当前叫牌更多的等级牌（count > current_bid["count"]）
+	- 同队加固：相同花色，更多张数
+	- 反主：不同队，更多张数（任意花色）
+	"""
+	# 如果还没有人叫牌，只需要至少1张等级牌
 	if current_bid["count"] == 0:
-		return true
-	
-	# 如果已经有人叫牌
+		return count >= 1
+
+	# 如果已经有人叫牌，需要更多的等级牌才能反叫
 	# 1. 同队加固：相同花色，更多张数
 	if player.team == current_bid["team"]:
 		if suit == current_bid["suit"] and count > current_bid["count"]:
 			return true
-	
+
 	# 2. 反主：不同队，更多张数（任意花色）
 	if player.team != current_bid["team"]:
 		if count > current_bid["count"]:
 			return true
-	
+
 	# 3. 无主特殊规则：小王=1张无主，大王=2张无主（最大）
 	if suit == Card.Suit.JOKER:
-		return true
-	
+		return count > current_bid["count"]
+
 	return false
 
 func make_bid(player: Player, suit: Card.Suit, count: int):

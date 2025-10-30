@@ -54,10 +54,11 @@ func create_bidding_panel():
 	button_container.add_theme_constant_override("separation", 15)
 	bid_panel.add_child(button_container)
 
-func show_bidding_options(available_suits: Array):
+func show_bidding_options(available_suits: Array, suit_counts: Dictionary = {}):
 	"""
 	显示可以叫的花色选项
 	available_suits: Array[Card.Suit] - 可以叫的花色列表
+	suit_counts: Dictionary - 每个花色的等级牌数量 {Card.Suit: int}
 	"""
 	# 清空现有按钮
 	for child in button_container.get_children():
@@ -68,13 +69,19 @@ func show_bidding_options(available_suits: Array):
 	# 为每个可叫的花色创建按钮
 	for suit in available_suits:
 		var btn = Button.new()
-		btn.text = suit_names[suit]
-		btn.custom_minimum_size = Vector2(100, 40)
-		btn.add_theme_font_size_override("font_size", 18)
+		# 如果提供了suit_counts，显示张数
+		if suit_counts.has(suit):
+			var count = suit_counts[suit]
+			btn.text = "%s (%d张)" % [suit_names[suit], count]
+		else:
+			btn.text = suit_names[suit]
+		btn.custom_minimum_size = Vector2(120, 40)
+		btn.add_theme_font_size_override("font_size", 16)
 
 		# 连接信号
 		var suit_to_bid = suit
-		btn.pressed.connect(func(): _on_suit_button_pressed(suit_to_bid))
+		var count_to_bid = suit_counts.get(suit, 1)
+		btn.pressed.connect(func(): _on_suit_button_pressed(suit_to_bid, count_to_bid))
 
 		button_container.add_child(btn)
 
@@ -98,9 +105,9 @@ func update_current_bid(message: String):
 	"""更新当前叫牌信息"""
 	current_bid_label.text = message
 
-func _on_suit_button_pressed(suit: Card.Suit):
+func _on_suit_button_pressed(suit: Card.Suit, count: int = 1):
 	"""花色按钮被点击"""
-	bid_made.emit(suit, 1)  # 暂时都是1张叫牌
+	bid_made.emit(suit, count)
 	hide_bidding_ui()
 
 func _on_pass_button_pressed():
