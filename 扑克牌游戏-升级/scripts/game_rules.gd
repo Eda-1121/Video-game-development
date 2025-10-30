@@ -58,7 +58,8 @@ static func identify_pattern(cards: Array[Card], trump_suit: Card.Suit, current_
 	
 	# 对子
 	if sorted_cards.size() == 2:
-		if sorted_cards[0].rank == sorted_cards[1].rank and sorted_cards[0].suit == sorted_cards[1].suit:
+		# 对子只需要rank相同即可，不需要花色相同
+		if sorted_cards[0].rank == sorted_cards[1].rank:
 			return PlayPattern.new(CardPattern.PAIR, sorted_cards)
 		else:
 			return PlayPattern.new(CardPattern.THROW, sorted_cards)
@@ -88,9 +89,9 @@ static func check_tractor(sorted_cards: Array[Card], trump_suit: Card.Suit, curr
 			return null
 		var card1 = sorted_cards[i]
 		var card2 = sorted_cards[i + 1]
-		
-		# 必须是相同花色和点数
-		if card1.rank != card2.rank or card1.suit != card2.suit:
+
+		# 对子只需要rank相同即可
+		if card1.rank != card2.rank:
 			return null
 		
 		# 必须都是主牌或都是副牌
