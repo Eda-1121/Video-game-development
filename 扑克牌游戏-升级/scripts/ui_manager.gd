@@ -12,7 +12,6 @@ var team2_score_label: Label
 var turn_label: Label
 
 var play_button: Button
-var pass_button: Button
 var bury_button: Button
 
 var center_message: Label
@@ -28,7 +27,6 @@ var game_over_ui: Node
 
 # 信号
 signal play_cards_pressed
-signal pass_pressed
 signal bury_cards_pressed
 
 func _ready():
@@ -131,13 +129,14 @@ func create_ui():
 	add_child(selected_count_label)
 	
 	# =====================================
-	# 底部按钮区
+	# 出牌按钮（居中，在牌的上方）
 	# =====================================
 	var button_container = HBoxContainer.new()
-	button_container.position = Vector2(440, 650)
+	# 居中显示：屏幕宽度1280，按钮宽120，居中位置 (1280-120)/2 = 580
+	button_container.position = Vector2(580, 480)  # 在牌的上方
 	button_container.add_theme_constant_override("separation", 20)
 	add_child(button_container)
-	
+
 	# 出牌按钮
 	play_button = Button.new()
 	play_button.text = "出牌"
@@ -145,23 +144,17 @@ func create_ui():
 	play_button.add_theme_font_size_override("font_size", 24)
 	play_button.pressed.connect(_on_play_button_pressed)
 	button_container.add_child(play_button)
-	
-	# 过牌按钮
-	pass_button = Button.new()
-	pass_button.text = "过牌"
-	pass_button.custom_minimum_size = Vector2(120, 50)
-	pass_button.add_theme_font_size_override("font_size", 24)
-	pass_button.pressed.connect(_on_pass_button_pressed)
-	button_container.add_child(pass_button)
-	
-	# 埋底按钮
+
+	# 埋底按钮（与出牌按钮共用位置）
 	bury_button = Button.new()
 	bury_button.text = "确认埋底"
 	bury_button.custom_minimum_size = Vector2(140, 50)
 	bury_button.add_theme_font_size_override("font_size", 24)
 	bury_button.pressed.connect(_on_bury_button_pressed)
 	bury_button.visible = false
-	button_container.add_child(bury_button)
+	# 埋底按钮独立定位，居中显示
+	bury_button.position = Vector2(570, 480)  # 居中位置
+	add_child(bury_button)
 	
 	# =====================================
 	# 中央消息标签
@@ -245,9 +238,6 @@ func create_player_avatars():
 func _on_play_button_pressed():
 	play_cards_pressed.emit()
 
-func _on_pass_button_pressed():
-	pass_pressed.emit()
-
 func _on_bury_button_pressed():
 	bury_cards_pressed.emit()
 
@@ -284,7 +274,6 @@ func show_center_message(message: String, duration: float = 2.0):
 func set_buttons_enabled(enabled: bool):
 	"""启用/禁用按钮"""
 	play_button.disabled = not enabled
-	pass_button.disabled = not enabled
 
 func highlight_current_player(player_id: int):
 	"""高亮当前出牌的玩家"""
@@ -302,9 +291,8 @@ func show_bury_button(visible: bool):
 	"""显示/隐藏埋底按钮"""
 	bury_button.visible = visible
 	selected_count_label.visible = visible
-	
+
 	play_button.visible = not visible
-	pass_button.visible = not visible
 
 func set_bury_button_enabled(enabled: bool):
 	"""启用/禁用埋底按钮"""

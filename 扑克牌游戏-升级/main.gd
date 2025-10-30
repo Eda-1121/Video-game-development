@@ -34,7 +34,6 @@ func _ready():
 	
 	# 连接基础UI信号
 	ui_manager.play_cards_pressed.connect(game_manager._on_play_cards_pressed)
-	ui_manager.pass_pressed.connect(game_manager._on_pass_pressed)
 	ui_manager.bury_cards_pressed.connect(game_manager._on_bury_cards_pressed)
 	game_manager.ui_manager = ui_manager
 	

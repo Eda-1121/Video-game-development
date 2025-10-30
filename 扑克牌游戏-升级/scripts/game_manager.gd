@@ -52,9 +52,9 @@ func initialize_game():
 	deck = Deck.new(2)
 	deck.create_deck()
 
-	# 玩家位置：玩家1在下方，玩家2在左侧，玩家3在上方，玩家4在右侧
+	# 玩家位置：玩家1在下方居中，其他AI玩家位置不变
 	var player_positions = [
-		Vector2(100, 550),   # 玩家1（人类）- 下方
+		Vector2(200, 550),   # 玩家1（人类）- 下方居中
 		Vector2(50, 280),    # 玩家2（AI）- 左侧
 		Vector2(100, 50),    # 玩家3（AI）- 上方
 		Vector2(1050, 280)   # 玩家4（AI）- 右侧
@@ -899,8 +899,3 @@ func get_pattern_name(pattern_type: GameRules.CardPattern) -> String:
 		GameRules.CardPattern.TRACTOR: return "拖拉机"
 		GameRules.CardPattern.THROW: return "甩牌"
 		_: return "无效"
-
-func _on_pass_pressed():
-	"""过牌按钮"""
-	if ui_manager:
-		ui_manager.show_center_message("过牌", 1.0)
