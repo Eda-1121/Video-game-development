@@ -34,8 +34,9 @@ var area_2d: Area2D
 # 动画参数
 const FLIP_DURATION = 0.3
 const FLIP_HALF_TIME = 0.15
-const HOVER_HEIGHT = 20
-const HOVER_SCALE = 1.1
+const HOVER_HEIGHT = 25  # 增加悬停高度使效果更明显
+const HOVER_SCALE = 1.15  # 增加悬停缩放比例
+const SELECTED_HEIGHT = 30  # 选中时的向上偏移高度
 
 # 交互状态
 var is_selectable: bool = true
@@ -72,13 +73,16 @@ func _setup_area2d():
 		area_2d = Area2D.new()
 		area_2d.name = "Area2D"
 		add_child(area_2d)
-		
+
 		collision_shape = CollisionShape2D.new()
 		var shape = RectangleShape2D.new()
-		shape.size = Vector2(60, 90)
+		# 碰撞区域只覆盖卡牌左侧可见部分（宽度35像素，与card_spacing匹配）
+		shape.size = Vector2(35, 90)
 		collision_shape.shape = shape
+		# 将碰撞形状向左偏移，使其覆盖左侧
+		collision_shape.position = Vector2(-12.5, 0)  # (35-60)/2 = -12.5
 		area_2d.add_child(collision_shape)
-		
+
 		area_2d.input_event.connect(_on_area_input_event)
 		area_2d.mouse_entered.connect(_on_mouse_entered)
 		area_2d.mouse_exited.connect(_on_mouse_exited)
@@ -231,7 +235,7 @@ func move_to(target_position: Vector2, duration: float = 0.5, ease_type = Tween.
 func hover_effect():
 	if not is_selectable or is_hovering:
 		return
-	
+
 	is_hovering = true
 
 	# 临时提高z_index，确保悬停的卡牌在最上层
@@ -243,7 +247,11 @@ func hover_effect():
 	tween.set_ease(Tween.EASE_OUT)
 	tween.set_trans(Tween.TRANS_BACK)
 
-	tween.tween_property(self, "position:y", original_position.y - HOVER_HEIGHT, 0.2)
+	# 计算悬停目标位置（考虑是否已选中）
+	var base_offset = SELECTED_HEIGHT if is_selected else 0
+	var target_y = original_position.y - base_offset - HOVER_HEIGHT
+
+	tween.tween_property(self, "position:y", target_y, 0.2)
 	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.2)
 
 	# 动画完成后，如果不再悬停则恢复z_index
@@ -255,7 +263,7 @@ func hover_effect():
 func unhover_effect():
 	if not is_hovering:
 		return
-	
+
 	is_hovering = false
 
 	# 只有未选中的卡牌才恢复原始z_index
@@ -266,13 +274,17 @@ func unhover_effect():
 			if parent_player and parent_player is Player:
 				hand_index = parent_player.hand.find(self)
 		z_index = hand_index
-	
+
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_trans(Tween.TRANS_BACK)
-	
-	tween.tween_property(self, "position:y", original_position.y, 0.2)
+
+	# 计算恢复目标位置（考虑是否已选中）
+	var base_offset = SELECTED_HEIGHT if is_selected else 0
+	var target_y = original_position.y - base_offset
+
+	tween.tween_property(self, "position:y", target_y, 0.2)
 	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.2)
 # ============================================
 # 选中状态
@@ -280,10 +292,19 @@ func unhover_effect():
 
 func set_selected(selected: bool):
 	is_selected = selected
+
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK)
+
 	if selected:
-		sprite.modulate = Color(1.2, 1.2, 1.2)
+		# 选中时：高亮颜色 + 向上移动
+		sprite.modulate = Color(1.3, 1.3, 1.0)  # 更明显的黄色高亮
+		tween.tween_property(self, "position:y", original_position.y - SELECTED_HEIGHT, 0.2)
 	else:
+		# 取消选中时：恢复颜色 + 恢复原始位置
 		sprite.modulate = Color.WHITE
+		tween.tween_property(self, "position:y", original_position.y, 0.2)
 
 func toggle_selected():
 	set_selected(not is_selected)
