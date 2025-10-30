@@ -548,6 +548,9 @@ func start_playing_phase():
 		player.update_hand_display(true)
 
 	current_player_index = dealer_index
+	print("=== 开始出牌阶段 ===")
+	print("庄家（叫牌成功的玩家）：", players[dealer_index].player_name, " (player_id=", dealer_index, ")")
+	print("首先出牌的玩家：", players[current_player_index].player_name)
 
 	if ui_manager:
 		ui_manager.update_turn_message("轮到 %s 出牌" % players[current_player_index].player_name)
@@ -761,35 +764,42 @@ func ai_play_turn(ai_player: Player):
 
 func evaluate_trick():
 	"""评估本轮"""
+	print("=== 评估本轮 ===")
+	print("当前回合出牌顺序：")
+	for i in range(current_trick.size()):
+		var play = current_trick[i]
+		print("  ", i+1, ". ", players[play["player_id"]].player_name, " 出了 ", play["cards"].size(), " 张牌")
+
 	var lead_play = current_trick[0]
 	var winner_play = lead_play
-	
+
 	for i in range(1, current_trick.size()):
 		var current_play = current_trick[i]
 		var compare_result = GameRules.compare_plays(winner_play["pattern"], current_play["pattern"], trump_suit, current_level)
-		
+
 		if compare_result < 0:
 			winner_play = current_play
 
 	var winner = players[winner_play["player_id"]]
+	print("本轮赢家：", winner.player_name, " (player_id=", winner_play["player_id"], ")")
 
 	var points = 0
 	for play in current_trick:
 		points += GameRules.calculate_points(play["cards"])
 
 	team_scores[winner.team] += points
-	
+
 	if ui_manager:
 		ui_manager.update_team_scores(team_scores[0], team_scores[1])
 		ui_manager.show_center_message("%s 赢得本轮，得 %d 分" % [winner.player_name, points], 2.0)
-	
+
 	await get_tree().create_timer(2.0).timeout
-	
+
 	for play in current_trick:
 		for card in play["cards"]:
 			if is_instance_valid(card) and card.get_parent():
 				card.queue_free()
-	
+
 	current_trick.clear()
 	
 	if players[0].get_hand_size() == 0:
@@ -815,12 +825,13 @@ func evaluate_trick():
 		end_round()
 	else:
 		current_player_index = winner_play["player_id"]
+		print("下一轮由赢家先出牌：", players[current_player_index].player_name, " (player_id=", current_player_index, ")")
 		await get_tree().create_timer(1.0).timeout
-		
+
 		if ui_manager:
 			ui_manager.update_turn_message("轮到 %s 出牌" % players[current_player_index].player_name)
 			ui_manager.highlight_current_player(current_player_index)
-		
+
 		if players[current_player_index].player_type == Player.PlayerType.AI:
 			await get_tree().create_timer(1.0).timeout
 			ai_play_turn(players[current_player_index])
