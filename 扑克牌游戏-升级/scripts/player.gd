@@ -123,12 +123,24 @@ func update_hand_display(animate: bool = true):
 	for i in range(hand.size()):
 		var card = hand[i]
 		var target_pos = Vector2(i * card_spacing, 0)
-		
+
+		# 保存选中状态
+		var was_selected = card.is_selected
+
 		if animate:
-			card.move_to(target_pos, 0.3)
+			# 如果卡牌被选中，移动到偏移后的位置
+			if was_selected:
+				var offset_pos = Vector2(target_pos.x, target_pos.y - 30)  # SELECTED_HEIGHT = 30
+				card.move_to_with_base(target_pos, offset_pos, 0.3)
+			else:
+				card.move_to(target_pos, 0.3)
 		else:
-			card.position = target_pos
-		
+			card.original_position = target_pos
+			if was_selected:
+				card.position = Vector2(target_pos.x, target_pos.y - 30)
+			else:
+				card.position = target_pos
+
 		card.z_index = i 
 
 func _on_card_clicked(card: Card):

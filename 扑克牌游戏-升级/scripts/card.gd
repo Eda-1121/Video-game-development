@@ -231,6 +231,21 @@ func move_to(target_position: Vector2, duration: float = 0.5, ease_type = Tween.
 	)
 	return tween
 
+func move_to_with_base(base_position: Vector2, actual_position: Vector2, duration: float = 0.5, ease_type = Tween.EASE_IN_OUT):
+	"""
+	移动卡牌到actual_position，但保存base_position作为original_position
+	用于处理选中状态的卡牌移动
+	"""
+	var tween = create_tween()
+	tween.set_ease(ease_type)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "position", actual_position, duration)
+	tween.tween_callback(func():
+		original_position = base_position  # 保存基础位置，不是实际位置
+		move_completed.emit(self)
+	)
+	return tween
+
 # ============================================
 # 悬浮效果
 # ============================================
