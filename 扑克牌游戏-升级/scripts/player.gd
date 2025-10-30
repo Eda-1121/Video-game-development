@@ -121,9 +121,16 @@ func _get_trump_type(card: Card, trump_suit: Card.Suit, current_rank: int) -> in
 
 func update_hand_display(animate: bool = true):
 	# 清理不在hand数组中但还在hand_container中的卡牌
+	var cleaned_count = 0
 	for child in hand_container.get_children():
 		if child is Card and not hand.has(child):
 			hand_container.remove_child(child)
+			cleaned_count += 1
+
+	if cleaned_count > 0:
+		print("清理了 ", cleaned_count, " 张不在hand数组中的卡牌")
+
+	print("update_hand_display: hand.size() = ", hand.size(), ", hand_container子节点数 = ", hand_container.get_child_count())
 
 	for i in range(hand.size()):
 		var card = hand[i]
@@ -151,12 +158,19 @@ func update_hand_display(animate: bool = true):
 func _on_card_clicked(card: Card):
 	if player_type != PlayerType.HUMAN:
 		return
-	
+
+	# 检查卡牌是否在手牌中（防止已出的牌被点击）
+	if not hand.has(card):
+		print("警告：尝试选择不在手牌中的卡牌 ", card)
+		return
+
 	if card.is_selected:
 		card.set_selected(false)
 		selected_cards.erase(card)
 		# 恢复原始z_index
-		card.z_index = hand.find(card)
+		var index = hand.find(card)
+		if index >= 0:
+			card.z_index = index
 	else:
 		card.set_selected(true)
 		selected_cards.append(card)
@@ -177,12 +191,18 @@ func play_selected_cards() -> bool:
 
 func play_cards(cards: Array[Card]) -> bool:
 	if not can_play_cards(cards):
+		print("错误：无法出牌，部分卡牌不在手牌中")
 		return false
+
+	print("出牌前：hand.size() = ", hand.size(), ", selected_cards.size() = ", selected_cards.size())
 
 	for card in cards:
 		# 取消选中状态
 		if card.is_selected:
 			card.set_selected(false)
+
+		# 设置卡牌为不可选择
+		card.is_selectable = false
 
 		# 断开信号连接（避免已出的牌还能被点击）
 		if card.card_clicked.is_connected(_on_card_clicked):
@@ -201,6 +221,8 @@ func play_cards(cards: Array[Card]) -> bool:
 
 	# 清空选中列表（以防万一）
 	selected_cards.clear()
+
+	print("出牌后：hand.size() = ", hand.size(), ", selected_cards.size() = ", selected_cards.size())
 
 	# 更新手牌显示
 	update_hand_display(true)
