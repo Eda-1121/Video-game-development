@@ -30,12 +30,12 @@ var max_bidding_rounds: int = 8  # 每人最多叫2次
 # 游戏统计
 var total_rounds_played: int = 0
 
-# 出牌区域
+# 出牌区域 - 调整到屏幕中央附近，形成围绕中心的布局
 var play_area_positions = [
-	Vector2(640, 480),
-	Vector2(320, 360),
-	Vector2(640, 240),
-	Vector2(960, 360)
+	Vector2(500, 450),   # 玩家1（人类）- 中央偏下
+	Vector2(350, 340),   # 玩家2（AI）- 中央偏左
+	Vector2(500, 200),   # 玩家3（AI）- 中央偏上
+	Vector2(650, 340)    # 玩家4（AI）- 中央偏右
 ]
 
 # UI管理器引用
