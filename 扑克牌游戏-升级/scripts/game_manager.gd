@@ -41,6 +41,10 @@ var play_area_positions = [
 # UI管理器引用
 var ui_manager = null
 
+# 叫牌决策等待标记
+var waiting_for_bid_decision: bool = false
+var bid_decision_made: bool = false
+
 signal phase_changed(phase: GamePhase)
 signal game_over(winner_team: int)
 
@@ -193,13 +197,27 @@ func check_and_handle_bidding(player: Player, latest_card: Card):
 
 	# 如果是人类玩家且拿到了当前级别的牌
 	if player.player_type == Player.PlayerType.HUMAN and max_count > 0:
-		# 显示叫牌提示
-		if can_make_bid(player, max_suit, max_count):
+		# 检查是否可以叫牌
+		var can_bid_single = can_make_bid(player, max_suit, 1)
+		var can_bid_pair = max_count >= 2 and can_make_bid(player, max_suit, 2)
+
+		if can_bid_single or can_bid_pair:
+			# 显示叫牌UI并启用按钮
 			if ui_manager and ui_manager.has_node("BiddingUI"):
 				var bidding_ui = ui_manager.get_node("BiddingUI")
 				bidding_ui.enable_buttons(true)
-			# 等待玩家叫牌或选择不叫（使用超时机制）
-			await get_tree().create_timer(1.0).timeout
+				bidding_ui.show_bidding_ui(true)
+
+			# 设置等待标记
+			waiting_for_bid_decision = true
+			bid_decision_made = false
+
+			# 等待玩家做出决策（叫牌或不叫）
+			while waiting_for_bid_decision and not bid_decision_made:
+				await get_tree().create_timer(0.1).timeout
+
+			# 重置标记
+			waiting_for_bid_decision = false
 
 	# AI玩家自动叫牌逻辑
 	elif player.player_type == Player.PlayerType.AI:
@@ -290,12 +308,18 @@ func _on_player_bid_made(suit: Card.Suit, count: int):
 		var bidding_ui = ui_manager.get_node("BiddingUI")
 		bidding_ui.enable_buttons(false)
 
+	# 设置决策完成标记，通知继续发牌
+	bid_decision_made = true
+
 func _on_player_bid_passed():
 	"""玩家选择不叫"""
 	# 禁用叫牌按钮
 	if ui_manager and ui_manager.has_node("BiddingUI"):
 		var bidding_ui = ui_manager.get_node("BiddingUI")
 		bidding_ui.enable_buttons(false)
+
+	# 设置决策完成标记，通知继续发牌
+	bid_decision_made = true
 
 func can_make_bid(player: Player, suit: Card.Suit, count: int) -> bool:
 	"""检查是否可以叫牌"""
