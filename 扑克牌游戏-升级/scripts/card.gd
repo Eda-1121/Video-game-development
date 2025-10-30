@@ -34,9 +34,10 @@ var area_2d: Area2D
 # 动画参数
 const FLIP_DURATION = 0.3
 const FLIP_HALF_TIME = 0.15
-const HOVER_HEIGHT = 25  # 增加悬停高度使效果更明显
-const HOVER_SCALE = 1.15  # 增加悬停缩放比例
-const SELECTED_HEIGHT = 30  # 选中时的向上偏移高度
+const CARD_SCALE = 1.5  # 卡牌整体缩放比例
+const HOVER_HEIGHT = 37.5  # 悬停高度（与CARD_SCALE成比例）
+const HOVER_SCALE = 1.15  # 悬停时额外的缩放比例
+const SELECTED_HEIGHT = 45  # 选中时的向上偏移高度（与CARD_SCALE成比例）
 
 # 交互状态
 var is_selectable: bool = true
@@ -64,9 +65,11 @@ func _setup_sprite():
 	if not has_node("Sprite2D"):
 		sprite = Sprite2D.new()
 		sprite.name = "Sprite2D"
+		sprite.scale = Vector2(CARD_SCALE, CARD_SCALE)  # 设置卡牌缩放
 		add_child(sprite)
 	else:
 		sprite = get_node("Sprite2D")
+		sprite.scale = Vector2(CARD_SCALE, CARD_SCALE)  # 确保已存在的sprite也缩放
 
 func _setup_area2d():
 	if not has_node("Area2D"):
@@ -76,11 +79,11 @@ func _setup_area2d():
 
 		collision_shape = CollisionShape2D.new()
 		var shape = RectangleShape2D.new()
-		# 碰撞区域只覆盖卡牌左侧可见部分（宽度35像素，与card_spacing匹配）
-		shape.size = Vector2(35, 90)
+		# 碰撞区域只覆盖卡牌左侧可见部分（根据CARD_SCALE调整）
+		shape.size = Vector2(35 * CARD_SCALE, 90 * CARD_SCALE)
 		collision_shape.shape = shape
 		# 将碰撞形状向左偏移，使其覆盖左侧
-		collision_shape.position = Vector2(-12.5, 0)  # (35-60)/2 = -12.5
+		collision_shape.position = Vector2(-12.5 * CARD_SCALE, 0)
 		area_2d.add_child(collision_shape)
 
 		area_2d.input_event.connect(_on_area_input_event)
@@ -252,7 +255,9 @@ func hover_effect():
 	var target_y = original_position.y - base_offset - HOVER_HEIGHT
 
 	tween.tween_property(self, "position:y", target_y, 0.2)
-	tween.tween_property(self, "scale", Vector2(HOVER_SCALE, HOVER_SCALE), 0.2)
+	# 在卡牌基础缩放上再应用hover缩放
+	var hover_scale = CARD_SCALE * HOVER_SCALE
+	tween.tween_property(sprite, "scale", Vector2(hover_scale, hover_scale), 0.2)
 
 	# 动画完成后，如果不再悬停则恢复z_index
 	tween.finished.connect(func():
@@ -285,7 +290,8 @@ func unhover_effect():
 	var target_y = original_position.y - base_offset
 
 	tween.tween_property(self, "position:y", target_y, 0.2)
-	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.2)
+	# 恢复到卡牌基础缩放
+	tween.tween_property(sprite, "scale", Vector2(CARD_SCALE, CARD_SCALE), 0.2)
 # ============================================
 # 选中状态
 # ============================================
