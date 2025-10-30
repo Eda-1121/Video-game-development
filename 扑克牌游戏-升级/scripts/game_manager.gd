@@ -515,8 +515,8 @@ func start_playing_phase():
 		# 设置所有牌的主牌状态
 		for card in player.hand:
 			card.set_trump(trump_suit, current_level)
-		# 重新排序：主牌和当前级别的牌放在最后
-		player.sort_hand(true)
+		# 重新排序：主牌和当前级别的牌放在最后，按正确顺序排列
+		player.sort_hand(true, trump_suit, current_level)
 		# 更新显示
 		player.update_hand_display(true)
 

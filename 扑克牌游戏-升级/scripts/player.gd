@@ -48,10 +48,12 @@ func receive_cards(cards: Array[Card]):
 	sort_hand()
 	update_hand_display()
 
-func sort_hand(trump_last: bool = false):
+func sort_hand(trump_last: bool = false, trump_suit: Card.Suit = Card.Suit.SPADE, current_rank: int = 2):
 	"""
 	排序手牌
 	trump_last: true = 主牌放最后（出牌阶段），false = 主牌放最前（默认）
+	trump_suit: 主花色
+	current_rank: 当前等级
 	"""
 	hand.sort_custom(func(a, b):
 		# 如果主牌放最后
@@ -59,9 +61,27 @@ func sort_hand(trump_last: bool = false):
 			# 非主牌在前，主牌在后
 			if a.is_trump != b.is_trump:
 				return not a.is_trump  # 非主牌返回true，排在前面
-			# 相同类型（都是主牌或都不是主牌），按花色和点数排序
-			if a.suit != b.suit:
+
+			# 如果都不是主牌，按花色和点数排序
+			if not a.is_trump:
+				if a.suit != b.suit:
+					return a.suit < b.suit
+				return a.rank < b.rank
+
+			# 都是主牌，需要按照特殊顺序排序
+			# 判断牌的类型
+			var a_type = _get_trump_type(a, trump_suit, current_rank)
+			var b_type = _get_trump_type(b, trump_suit, current_rank)
+
+			if a_type != b_type:
+				return a_type < b_type
+
+			# 同类型内部排序
+			if a_type == 0:  # 主花色非等级牌
+				return a.rank < b.rank
+			elif a_type == 1:  # 非主花色等级牌
 				return a.suit < b.suit
+			# 其他类型（主花色等级牌、小王、大王）已经由type确定顺序
 			return a.rank < b.rank
 		else:
 			# 默认排序：主牌在前
@@ -71,6 +91,33 @@ func sort_hand(trump_last: bool = false):
 				return a.suit < b.suit
 			return a.rank < b.rank
 	)
+
+func _get_trump_type(card: Card, trump_suit: Card.Suit, current_rank: int) -> int:
+	"""
+	获取主牌的类型，返回值越小越靠前
+	0: 主花色的非等级牌
+	1: 非主花色的等级牌
+	2: 主花色的等级牌
+	3: 小王
+	4: 大王
+	"""
+	if card.suit == Card.Suit.JOKER:
+		if card.rank == Card.Rank.SMALL_JOKER:
+			return 3  # 小王
+		else:
+			return 4  # 大王
+
+	if card.rank == current_rank:
+		if card.suit == trump_suit:
+			return 2  # 主花色等级牌
+		else:
+			return 1  # 非主花色等级牌
+
+	if card.suit == trump_suit:
+		return 0  # 主花色非等级牌
+
+	# 不应该到这里，因为调用者已经确认是主牌
+	return 5
 
 func update_hand_display(animate: bool = true):
 	for i in range(hand.size()):
