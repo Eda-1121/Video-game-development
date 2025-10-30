@@ -120,6 +120,11 @@ func _get_trump_type(card: Card, trump_suit: Card.Suit, current_rank: int) -> in
 	return 5
 
 func update_hand_display(animate: bool = true):
+	# 清理不在hand数组中但还在hand_container中的卡牌
+	for child in hand_container.get_children():
+		if child is Card and not hand.has(child):
+			hand_container.remove_child(child)
+
 	for i in range(hand.size()):
 		var card = hand[i]
 		var target_pos = Vector2(i * card_spacing, 0)
@@ -165,21 +170,42 @@ func _on_card_clicked(card: Card):
 func play_selected_cards() -> bool:
 	if selected_cards.is_empty():
 		return false
-	
-	return play_cards(selected_cards)
+
+	# 复制一份，避免在play_cards中清空selected_cards影响cards参数
+	var cards_to_play = selected_cards.duplicate()
+	return play_cards(cards_to_play)
 
 func play_cards(cards: Array[Card]) -> bool:
 	if not can_play_cards(cards):
 		return false
-	
+
 	for card in cards:
+		# 取消选中状态
+		if card.is_selected:
+			card.set_selected(false)
+
+		# 断开信号连接（避免已出的牌还能被点击）
+		if card.card_clicked.is_connected(_on_card_clicked):
+			card.card_clicked.disconnect(_on_card_clicked)
+
+		# 从手牌数组中移除
 		hand.erase(card)
+
+		# 从UI容器中移除
 		if card.get_parent() == hand_container:
 			hand_container.remove_child(card)
-	
+
+		# 从选中列表中移除
+		if selected_cards.has(card):
+			selected_cards.erase(card)
+
+	# 清空选中列表（以防万一）
 	selected_cards.clear()
-	
-	update_hand_display()
+
+	# 更新手牌显示
+	update_hand_display(true)
+
+	# 发出信号
 	cards_played.emit(cards)
 	return true
 
