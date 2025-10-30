@@ -133,7 +133,8 @@ func create_ui():
 	# =====================================
 	var button_container = HBoxContainer.new()
 	# 居中显示：屏幕宽度1280，按钮宽120，居中位置 (1280-120)/2 = 580
-	button_container.position = Vector2(580, 480)  # 在牌的上方
+	# 按钮位置更靠上，避免与卡牌重叠（y=400，距离手牌150px）
+	button_container.position = Vector2(580, 400)
 	button_container.add_theme_constant_override("separation", 20)
 	add_child(button_container)
 
@@ -153,7 +154,7 @@ func create_ui():
 	bury_button.pressed.connect(_on_bury_button_pressed)
 	bury_button.visible = false
 	# 埋底按钮独立定位，居中显示
-	bury_button.position = Vector2(570, 480)  # 居中位置
+	bury_button.position = Vector2(570, 400)  # 与出牌按钮相同高度
 	add_child(bury_button)
 	
 	# =====================================
@@ -209,6 +210,11 @@ func create_player_avatars():
 		avatar_panel.position = avatar_positions[i]
 		avatar_panel.size = Vector2(120, 80)
 		avatar_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		# 玩家1（索引0）不显示头像框
+		if i == 0:
+			avatar_panel.visible = false
+
 		add_child(avatar_panel)
 		player_avatars.append(avatar_panel)
 		
