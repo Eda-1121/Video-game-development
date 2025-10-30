@@ -48,13 +48,28 @@ func receive_cards(cards: Array[Card]):
 	sort_hand()
 	update_hand_display()
 
-func sort_hand():
-	hand.sort_custom(func(a, b): 
-		if a.is_trump != b.is_trump:
-			return a.is_trump
-		if a.suit != b.suit:
-			return a.suit < b.suit
-		return a.rank < b.rank
+func sort_hand(trump_last: bool = false):
+	"""
+	排序手牌
+	trump_last: true = 主牌放最后（出牌阶段），false = 主牌放最前（默认）
+	"""
+	hand.sort_custom(func(a, b):
+		# 如果主牌放最后
+		if trump_last:
+			# 非主牌在前，主牌在后
+			if a.is_trump != b.is_trump:
+				return not a.is_trump  # 非主牌返回true，排在前面
+			# 相同类型（都是主牌或都不是主牌），按花色和点数排序
+			if a.suit != b.suit:
+				return a.suit < b.suit
+			return a.rank < b.rank
+		else:
+			# 默认排序：主牌在前
+			if a.is_trump != b.is_trump:
+				return a.is_trump
+			if a.suit != b.suit:
+				return a.suit < b.suit
+			return a.rank < b.rank
 	)
 
 func update_hand_display(animate: bool = true):

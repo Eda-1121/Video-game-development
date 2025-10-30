@@ -510,14 +510,24 @@ func start_playing_phase():
 	"""开始出牌阶段"""
 	current_phase = GamePhase.PLAYING
 
+	# 重新整理所有玩家的手牌（主牌放最后）
+	for player in players:
+		# 设置所有牌的主牌状态
+		for card in player.hand:
+			card.set_trump(trump_suit, current_level)
+		# 重新排序：主牌和当前级别的牌放在最后
+		player.sort_hand(true)
+		# 更新显示
+		player.update_hand_display(true)
+
 	current_player_index = dealer_index
-	
+
 	if ui_manager:
 		ui_manager.update_turn_message("轮到 %s 出牌" % players[current_player_index].player_name)
 		ui_manager.highlight_current_player(current_player_index)
-	
+
 	phase_changed.emit(current_phase)
-	
+
 	if players[current_player_index].player_type == Player.PlayerType.AI:
 		await get_tree().create_timer(1.0).timeout
 		ai_play_turn(players[current_player_index])
