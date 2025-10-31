@@ -711,17 +711,20 @@ func _on_play_cards_pressed():
 		if ui_manager:
 			ui_manager.show_center_message("请先选择要出的牌!", 1.5)
 		return
-	
+
 	for card in human_player.selected_cards:
 		card.set_trump(trump_suit, current_level)
-	
+
 	var pattern = GameRules.identify_pattern(human_player.selected_cards, trump_suit, current_level)
 
 	if not GameRules.validate_play(human_player.selected_cards, human_player.hand):
 		if ui_manager:
 			ui_manager.show_center_message("无效的出牌!", 1.5)
 		return
-	
+
+	# 保存要出的牌（在调用play_selected_cards之前）
+	var cards_to_play = human_player.selected_cards.duplicate()
+
 	if current_trick.is_empty():
 		# 首家出牌
 		if pattern.pattern_type == GameRules.CardPattern.THROW:
@@ -733,14 +736,16 @@ func _on_play_cards_pressed():
 				var largest_card = GameRules.get_largest_card(pattern.cards, trump_suit, current_level)
 				human_player.selected_cards.clear()
 				human_player.selected_cards.append(largest_card)
+				# 重新保存要出的牌
+				cards_to_play = human_player.selected_cards.duplicate()
 				pattern = GameRules.identify_pattern([largest_card], trump_suit, current_level)
-		
+
 		if human_player.play_selected_cards():
-			show_played_cards(0, pattern.cards)
-			
+			show_played_cards(0, cards_to_play)
+
 			current_trick.append({
 				"player_id": human_player.player_id,
-				"cards": pattern.cards,
+				"cards": cards_to_play,
 				"pattern": pattern
 			})
 
@@ -755,24 +760,24 @@ func _on_play_cards_pressed():
 	else:
 		# 跟牌
 		var lead_pattern = current_trick[0]["pattern"]
-		
+
 		if not GameRules.can_follow(pattern, lead_pattern, human_player.hand, trump_suit, current_level):
 			if ui_manager:
 				ui_manager.show_center_message("跟牌不符合规则!", 1.5)
 			return
-		
+
 		if human_player.play_selected_cards():
-			show_played_cards(0, pattern.cards)
-			
+			show_played_cards(0, cards_to_play)
+
 			current_trick.append({
 				"player_id": human_player.player_id,
-				"cards": pattern.cards,
+				"cards": cards_to_play,
 				"pattern": pattern
 			})
-			
+
 			if ui_manager:
 				ui_manager.show_center_message("跟牌成功!", 1.0)
-			
+
 			if current_trick.size() == 4:
 				evaluate_trick()
 			else:
@@ -846,57 +851,53 @@ func ai_play_turn(ai_player: Player):
 
 	for card in ai_player.hand:
 		card.set_trump(trump_suit, current_level)
-	
-	var cards_to_play: Array = []
-	
+
+	var cards_to_play: Array[Card] = []
+
 	if current_trick.is_empty():
 		# 首家出牌：出最大的单张
 		if ai_player.hand.size() > 0:
 			var sorted_hand = ai_player.hand.duplicate()
-			sorted_hand.sort_custom(func(a, b): 
+			sorted_hand.sort_custom(func(a, b):
 				return a.compare_to(b, trump_suit, current_level) > 0
 			)
-			cards_to_play = [sorted_hand[0]]
+			cards_to_play.append(sorted_hand[0])
 	else:
 		# 跟牌
 		var lead_pattern = current_trick[0]["pattern"]
 		var valid_plays = GameRules.get_valid_follow_cards(ai_player.hand, lead_pattern, trump_suit, current_level)
-		
+
 		if valid_plays.size() > 0:
-			cards_to_play = valid_plays[0]
+			for card in valid_plays[0]:
+				cards_to_play.append(card)
 		elif ai_player.hand.size() >= lead_pattern.length:
 			var sorted_hand = ai_player.hand.duplicate()
-			sorted_hand.sort_custom(func(a, b): 
+			sorted_hand.sort_custom(func(a, b):
 				return a.compare_to(b, trump_suit, current_level) < 0
 			)
-			cards_to_play = sorted_hand.slice(0, lead_pattern.length)
-	
-	if cards_to_play.size() > 0:
-		for card in cards_to_play:
-			ai_player.hand.erase(card)
-			if card.get_parent() == ai_player.hand_container:
-				ai_player.hand_container.remove_child(card)
-		
-		ai_player.update_hand_display()
-		
-		var cards_array: Array[Card] = []
-		for card in cards_to_play:
-			cards_array.append(card)
-		
-		show_played_cards(ai_player.player_id, cards_array)
-		
-		var pattern = GameRules.identify_pattern(cards_array, trump_suit, current_level)
-		current_trick.append({
-			"player_id": ai_player.player_id,
-			"cards": cards_array,
-			"pattern": pattern
-		})
+			var slice = sorted_hand.slice(0, lead_pattern.length)
+			for card in slice:
+				cards_to_play.append(card)
 
-		if current_trick.size() == 4:
-			await get_tree().create_timer(1.0).timeout
-			evaluate_trick()
+	if cards_to_play.size() > 0:
+		# 使用统一的play_cards方法
+		if ai_player.play_cards(cards_to_play):
+			show_played_cards(ai_player.player_id, cards_to_play)
+
+			var pattern = GameRules.identify_pattern(cards_to_play, trump_suit, current_level)
+			current_trick.append({
+				"player_id": ai_player.player_id,
+				"cards": cards_to_play,
+				"pattern": pattern
+			})
+
+			if current_trick.size() == 4:
+				await get_tree().create_timer(1.0).timeout
+				evaluate_trick()
+			else:
+				next_player_turn()
 		else:
-			next_player_turn()
+			print("错误：AI出牌失败！")
 
 func evaluate_trick():
 	"""评估本轮"""
