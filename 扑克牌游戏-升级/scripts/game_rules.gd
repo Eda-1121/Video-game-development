@@ -160,14 +160,38 @@ static func can_follow(follow_pattern: PlayPattern, lead_pattern: PlayPattern, h
 			return is_same_suit_as_lead(follow_pattern.cards[0], lead_pattern.cards[0], trump_suit, current_rank)
 		
 		CardPattern.PAIR:
-			# 跟对子：有同花色对子必须出对子
+			# 跟对子规则：
+			# 1. 有同花色对子，必须出同花色对子
+			# 2. 没有同花色对子，但有2张或更多同花色，必须出2张同花色
+			# 3. 只有1张同花色，必须出这1张同花色 + 1张其它花色
+			# 4. 没有同花色，可以出任意2张（不需要相同花色）
+
 			var pairs = find_pairs_in_cards(same_suit_cards)
 			if pairs.size() > 0:
-				# 必须出对子
+				# 情况1：有同花色对子，必须出同花色对子
 				return follow_pattern.pattern_type == CardPattern.PAIR and \
 					   is_same_suit_as_lead(follow_pattern.cards[0], lead_pattern.cards[0], trump_suit, current_rank)
-			# 没有对子，可以出任意两张
-			return true
+
+			# 没有同花色对子
+			if same_suit_cards.size() >= 2:
+				# 情况2：有2张或更多同花色，必须出2张同花色
+				var all_same_suit = true
+				for card in follow_pattern.cards:
+					if not is_same_suit_as_lead(card, lead_pattern.cards[0], trump_suit, current_rank):
+						all_same_suit = false
+						break
+				return all_same_suit
+			elif same_suit_cards.size() == 1:
+				# 情况3：只有1张同花色，必须出这1张同花色 + 1张其它花色
+				var has_one_same_suit = false
+				for card in follow_pattern.cards:
+					if is_same_suit_as_lead(card, lead_pattern.cards[0], trump_suit, current_rank):
+						has_one_same_suit = true
+						break
+				return has_one_same_suit
+			else:
+				# 情况4：没有同花色，可以出任意2张
+				return true
 		
 		CardPattern.TRACTOR:
 			# 跟拖拉机：有同花色拖拉机必须出拖拉机
@@ -239,13 +263,31 @@ static func get_valid_follow_cards(hand: Array[Card], lead_pattern: PlayPattern,
 			return valid_plays
 		
 		CardPattern.PAIR:
+			# 跟对子的优先级：
+			# 1. 有同花色对子，出同花色对子
+			# 2. 没有对子但有2张或更多同花色，出2张同花色
+			# 3. 只有1张同花色，出这1张同花色 + 1张其它花色
+			# 4. 没有同花色，出任意2张
+
 			var pairs = find_pairs_in_cards(same_suit_cards)
 			if pairs.size() > 0:
+				# 情况1：有同花色对子
 				return pairs
-			# 没有对子，出两张同花色
+
 			if same_suit_cards.size() >= 2:
+				# 情况2：没有对子，但有2张或更多同花色
 				return [[same_suit_cards[0], same_suit_cards[1]]]
-			# 同花色不够，垫其他牌
+
+			if same_suit_cards.size() == 1:
+				# 情况3：只有1张同花色，组合1张同花色 + 1张其它花色
+				var other_cards: Array[Card] = []
+				for card in hand:
+					if not same_suit_cards.has(card):
+						other_cards.append(card)
+				if other_cards.size() > 0:
+					return [[same_suit_cards[0], other_cards[0]]]
+
+			# 情况4：没有同花色，出任意2张
 			if hand.size() >= 2:
 				return [hand.slice(0, 2)]
 			return []
