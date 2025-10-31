@@ -140,7 +140,7 @@ static func can_follow(follow_pattern: PlayPattern, lead_pattern: PlayPattern, h
 	var lead_suit = lead_pattern.cards[0].suit
 	
 	# 找出同花色的牌
-	var same_suit_cards = []
+	var same_suit_cards: Array[Card] = []
 	for card in hand:
 		if lead_is_trump:
 			if card.is_trump:
@@ -215,7 +215,7 @@ static func get_valid_follow_cards(hand: Array[Card], lead_pattern: PlayPattern,
 	var lead_suit = lead_pattern.cards[0].suit
 	
 	# 找出同花色的牌
-	var same_suit_cards = []
+	var same_suit_cards: Array[Card] = []
 	for card in hand:
 		if lead_is_trump:
 			if card.is_trump:
@@ -288,7 +288,8 @@ static func get_valid_follow_cards(hand: Array[Card], lead_pattern: PlayPattern,
 
 static func find_pairs_in_cards(cards: Array[Card]) -> Array:
 	"""在牌中找出所有对子"""
-	var sorted_cards = cards.duplicate()
+	var sorted_cards: Array[Card] = []
+	sorted_cards.assign(cards)
 	sorted_cards.sort_custom(func(a, b): 
 		if a.suit != b.suit:
 			return a.suit < b.suit
