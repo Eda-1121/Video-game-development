@@ -146,9 +146,13 @@ func update_hand_display(animate: bool = true):
 				card.get_parent().remove_child(card)
 			hand_container.add_child(card)
 
-		# 确保卡牌可见和可选择
+		# 确保卡牌可见和可选择（只对在手牌中的卡牌）
 		card.visible = true
 		card.is_selectable = true
+
+		# 确保卡牌颜色正常（清除任何残留的高亮）
+		if card.sprite and not card.is_selected:
+			card.sprite.modulate = Color.WHITE
 
 	print("清理后 - hand_container子节点数：", hand_container.get_child_count())
 
@@ -227,9 +231,11 @@ func play_cards(cards: Array[Card]) -> bool:
 		print("出牌：", card.get_card_name())
 
 	for card in cards:
-		# 取消选中状态
+		# 立即取消选中状态（不使用动画，避免Tween冲突）
 		if card.is_selected:
-			card.set_selected(false)
+			card.is_selected = false
+			if card.sprite:
+				card.sprite.modulate = Color.WHITE  # 立即恢复颜色
 
 		# 设置卡牌为不可选择
 		card.is_selectable = false
@@ -255,8 +261,8 @@ func play_cards(cards: Array[Card]) -> bool:
 
 	print("出牌后 - hand.size() = ", hand.size())
 
-	# 立即更新手牌显示，确保同步
-	update_hand_display(true)
+	# 立即更新手牌显示（不使用动画，避免与出牌动画冲突）
+	update_hand_display(false)
 
 	# 验证：再次检查hand数组和UI是否同步
 	verify_hand_sync()
