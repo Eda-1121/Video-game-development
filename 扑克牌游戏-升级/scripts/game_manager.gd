@@ -803,13 +803,16 @@ func can_beat_card(card1: Card, card2: Card) -> bool:
 func show_played_cards(player_id: int, cards: Array):
 	"""显示出的牌"""
 	var position = play_area_positions[player_id]
-	
+
 	for i in range(cards.size()):
 		var card = cards[i]
-		if not card.get_parent():
-			add_child(card)
+		# 确保牌从原父节点移除并添加到game_manager
+		if card.get_parent():
+			card.get_parent().remove_child(card)
+		add_child(card)
 
-		card.position = position + Vector2(i * 20, 0)
+		# 使用全局坐标，确保牌显示在正确的屏幕位置
+		card.global_position = position + Vector2(i * 20, 0)
 		card.z_index = 100
 		card.visible = true
 		card.set_face_up(true, true)
