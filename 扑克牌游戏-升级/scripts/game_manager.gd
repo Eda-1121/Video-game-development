@@ -977,43 +977,79 @@ func evaluate_trick():
 # =====================================
 
 func end_round():
-	"""本局结束"""
+	"""本局结束，计算升级"""
 	current_phase = GamePhase.SCORING
 
-	var attacker_team = 1 - current_bid["team"]
-	var attacker_score = team_scores[attacker_team]
-	
+	print("=== 本局结束，开始计算升级 ===")
+	var dealer_team = current_bid["team"]  # 庄家队（叫牌成功的队）
+	var attacker_team = 1 - dealer_team    # 对手队（闲家）
+	var attacker_score = team_scores[attacker_team]  # 对手队得分
+
+	print("庄家队：队伍", dealer_team + 1, " 得分：", team_scores[dealer_team])
+	print("对手队：队伍", attacker_team + 1, " 得分：", attacker_score)
+
 	var levels_to_advance = 0
-	
-	if attacker_score >= 120:
-		if attacker_score >= 160:
-			levels_to_advance = 3
-		elif attacker_score >= 140:
-			levels_to_advance = 2
-		else:
-			levels_to_advance = 1
-		
+	var winning_team = -1
+
+	# 标准升级规则（根据对手队得分）：
+	# 对手得分 < 40分：庄家升3级
+	# 对手得分 40-75分：庄家升2级
+	# 对手得分 80-115分：庄家升1级
+	# 对手得分 120-155分：对手升1级，庄家换到对手队
+	# 对手得分 160-195分：对手升2级，庄家换到对手队
+	# 对手得分 ≥ 200分：对手升3级，庄家换到对手队
+
+	if attacker_score >= 200:
+		# 对手升3级
+		levels_to_advance = 3
+		winning_team = attacker_team
+		team_levels[attacker_team] += levels_to_advance
+		dealer_index = (dealer_index + 1) % 4  # 庄家换到对手队
+		if ui_manager:
+			ui_manager.show_center_message("队伍%d 大胜！升%d级！" % [attacker_team + 1, levels_to_advance], 3.0)
+	elif attacker_score >= 160:
+		# 对手升2级
+		levels_to_advance = 2
+		winning_team = attacker_team
 		team_levels[attacker_team] += levels_to_advance
 		dealer_index = (dealer_index + 1) % 4
-
 		if ui_manager:
-			ui_manager.show_center_message("队伍%d 获胜!升%d级!" % [attacker_team + 1, levels_to_advance], 3.0)
+			ui_manager.show_center_message("队伍%d 获胜！升%d级！" % [attacker_team + 1, levels_to_advance], 3.0)
+	elif attacker_score >= 120:
+		# 对手升1级
+		levels_to_advance = 1
+		winning_team = attacker_team
+		team_levels[attacker_team] += levels_to_advance
+		dealer_index = (dealer_index + 1) % 4
+		if ui_manager:
+			ui_manager.show_center_message("队伍%d 获胜！升%d级！" % [attacker_team + 1, levels_to_advance], 3.0)
+	elif attacker_score >= 80:
+		# 庄家守住，升1级
+		levels_to_advance = 1
+		winning_team = dealer_team
+		team_levels[dealer_team] += levels_to_advance
+		# 庄家不变
+		if ui_manager:
+			ui_manager.show_center_message("队伍%d 守住！升%d级！" % [dealer_team + 1, levels_to_advance], 3.0)
+	elif attacker_score >= 40:
+		# 庄家守住，升2级
+		levels_to_advance = 2
+		winning_team = dealer_team
+		team_levels[dealer_team] += levels_to_advance
+		if ui_manager:
+			ui_manager.show_center_message("队伍%d 守住！升%d级！" % [dealer_team + 1, levels_to_advance], 3.0)
 	else:
-		if attacker_score < 80:
-			levels_to_advance = 2
-		elif attacker_score < 40:
-			levels_to_advance = 3
-		else:
-			levels_to_advance = 0
+		# 对手得分 < 40，庄家大胜，升3级
+		levels_to_advance = 3
+		winning_team = dealer_team
+		team_levels[dealer_team] += levels_to_advance
+		if ui_manager:
+			ui_manager.show_center_message("队伍%d 大胜！升%d级！" % [dealer_team + 1, levels_to_advance], 3.0)
 
-		if levels_to_advance > 0:
-			team_levels[current_bid["team"]] += levels_to_advance
-			if ui_manager:
-				ui_manager.show_center_message("队伍%d 守住!升%d级!" % [current_bid["team"] + 1, levels_to_advance], 3.0)
-		else:
-			if ui_manager:
-				ui_manager.show_center_message("队伍%d 守住!" % [current_bid["team"] + 1], 3.0)
+	print("获胜队伍：队伍", winning_team + 1, " 升级：", levels_to_advance)
+	print("当前等级 - 队伍1：", team_levels[0], " 队伍2：", team_levels[1])
 
+	# 更新当前级别（取两队中最高的）
 	current_level = max(team_levels[0], team_levels[1])
 	
 	await get_tree().create_timer(3.0).timeout
